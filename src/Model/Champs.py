@@ -5,6 +5,7 @@ from src.Model.Registre import Registre
 
 class Champs(Model):
     label_champ = CharField()
+    name_champs = CharField()
     obligatoire = BooleanField()
     position = IntegerField()
     typeChamps = ForeignKeyField(model=TypeChamps, backref='typeChamps')

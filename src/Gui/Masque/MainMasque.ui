@@ -13,6 +13,9 @@
   <property name="windowTitle">
    <string>Masque</string>
   </property>
+  <property name="autoFillBackground">
+   <bool>false</bool>
+  </property>
   <widget class="QWidget" name="central_widget">
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
@@ -25,7 +28,7 @@
         <enum>Qt::Vertical</enum>
        </property>
        <widget class="QStackedWidget" name="stacked_widget_images"/>
-       <widget class="QWidget" name="">
+       <widget class="QWidget" name="layoutWidget">
         <layout class="QHBoxLayout" name="horizontalLayout">
          <item>
           <widget class="QStackedWidget" name="stacked_widget_champs"/>
@@ -63,7 +66,7 @@
               <x>0</x>
               <y>0</y>
               <width>245</width>
-              <height>272</height>
+              <height>574</height>
              </rect>
             </property>
            </widget>
@@ -85,18 +88,60 @@
      <height>21</height>
     </rect>
    </property>
-   <widget class="QMenu" name="menu_chargement">
+   <widget class="QMenu" name="menu_nouveau">
     <property name="title">
      <string>Nouveau</string>
     </property>
     <addaction name="action_chargement"/>
    </widget>
-   <addaction name="menu_chargement"/>
+   <widget class="QMenu" name="menuAdmin">
+    <property name="title">
+     <string>Admin</string>
+    </property>
+    <addaction name="action_gestion_roles"/>
+    <addaction name="action_gestion_utilisateur"/>
+    <addaction name="action_gestion_champs"/>
+    <addaction name="action_gestion_type_champs"/>
+   </widget>
+   <widget class="QMenu" name="menuDisposition">
+    <property name="title">
+     <string>Disposition</string>
+    </property>
+    <addaction name="action_intervertir_les_champs"/>
+   </widget>
+   <addaction name="menu_nouveau"/>
+   <addaction name="menuAdmin"/>
+   <addaction name="menuDisposition"/>
   </widget>
   <widget class="QStatusBar" name="status_bar"/>
   <action name="action_chargement">
    <property name="text">
     <string>Chargement ...</string>
+   </property>
+  </action>
+  <action name="action_gestion_roles">
+   <property name="text">
+    <string>Gestion Roles</string>
+   </property>
+  </action>
+  <action name="action_gestion_utilisateur">
+   <property name="text">
+    <string>Gestion Utilisateurs</string>
+   </property>
+  </action>
+  <action name="action_gestion_champs">
+   <property name="text">
+    <string>Gestion Champs</string>
+   </property>
+  </action>
+  <action name="action_gestion_type_champs">
+   <property name="text">
+    <string>Gestion type champs</string>
+   </property>
+  </action>
+  <action name="action_intervertir_les_champs">
+   <property name="text">
+    <string>Intervertir les champs</string>
    </property>
   </action>
  </widget>

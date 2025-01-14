@@ -1,24 +1,36 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox, QProgressBar, QTableWidget
+import os
+from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox, QProgressBar, QStyleFactory
 from PyQt5.QtGui import QKeyEvent
 from PyQt5.uic import loadUi
 from PyQt5.QtCore import Qt
 import os
-from TiffViewer import TiffViewer
 from distutils.dir_util import copy_tree
-from TableWidgetFilename import TableWidgetFilename
-import math
+#pour la generalité
+from src.Gui.Masque.TiffViewer import TiffViewer
+from src.Gui.Masque.TableWidgetFilename import TableWidgetFilename
+from src.Gui.Admin.DialogRoles import DialogRoles
+from src.Gui.Admin.DialogUser import DialogUser
+from src.Gui.Admin.DialogCdcRegistre import DialogCdcRegistre
+from src.Gui.Admin.DialogTypeChamps import DialogTypeChamps
+from src.Gui.Masque.DialogIntervertirChamps import DialogIntervertirChamps
+#pour le test
+# from TiffViewer import TiffViewer
+# from TableWidgetFilename import TableWidgetFilename
+
 
 class MasqueWindow(QMainWindow):
-    # def __init__(self, id_user):
-    def __init__(self):
+    #pour la generalité
+    def __init__(self, user):
+    #pour le test
+    # def __init__(self):
         super().__init__()
         # Charger le fichier .ui
-        loadUi(os.path.abspath("src/Gui/Masque/MainMasque.ui"), self)
+        loadUi("src/Gui/Masque/MainMasque.ui", self)
         
-        # self.id_user = id_user
+        self.user = user
         self.images_path = "images"
-        # Vous pouvez maintenant connecter des signaux et des slots
+        
         screen = QApplication.primaryScreen()
         # print(self.id_user)
 
@@ -35,21 +47,42 @@ class MasqueWindow(QMainWindow):
         self.progress_bar.setMaximum(100) 
         self.progress_bar.setMinimum(0)   
         self.progress_bar.setValue(0)     
-        self.progress_bar.setTextVisible(True)  # Afficher le texte à l'intérieur de la progress bar
+        self.progress_bar.setTextVisible(True)
         self.status_bar.addWidget(self.progress_bar)
 
-        self.action_chargement.triggered.connect(self.onOpenFileDialog)
         #on cache par defaut le scroll area image, progressbar
         self.scroll_area_list_images.hide()
         self.progress_bar.hide()
 
         #tableau widget qui contient la liste des nom d'images à saisir
         self.table_widget_file_name = TableWidgetFilename()
-        self.table_widget_file_name.cellClickedSignal.connect(self.onCellTableWidgetClicked)
         self.table_widget_file_name.hide()
+        #signal cellule tableau
+        self.table_widget_file_name.cellClicked.connect(self.onCellTableWidgetClicked)
 
+        #variable pour contenir les boites de dialogue        
+        self.dialog_widget_roles = None
+        self.dialog_widget_user = None
+        self.dialog_widget_champs = None
+        self.dialog_widget_type_champs = None
+        self.dialog_widget_intervertir_champs = None
+        
+        if user.roles.type == "user":
+            self.action_gestion_roles.setVisible(False)
+            self.action_gestion_utilisateur.setVisible(False)
+        #action signal
+        self.action_chargement.triggered.connect(self.onOpenFileDialog)
+        self.action_gestion_roles.triggered.connect(self.onOpenDialogRoles)
+        self.action_gestion_utilisateur.triggered.connect(self.onOpenDialogUser)
+        self.action_gestion_champs.triggered.connect(self.onOpenDialogChamps)
+        self.action_gestion_type_champs.triggered.connect(self.onOpenDialogTypeChamps)
+        self.action_intervertir_les_champs.triggered.connect(self.onOpenDialogIntervertirChamps)
+
+        
 
         self.showMaximized()
+
+        
 
     def onOpenFileDialog(self):
         # Ouvrir QFileDialog pour sélectionner un dossier
@@ -62,7 +95,6 @@ class MasqueWindow(QMainWindow):
         if path_source_folder:  # Si un dossier est sélectionné
             root_dir = path_source_folder.split("/")[-1] #le nom du dossier selectionne
             copy_tree(path_source_folder, self.images_path+"/"+root_dir) # copier le dossier et ses sous dossier
-            # self.countFiles(root_dir)
             self.scan(self.images_path+"/"+root_dir)
 
     def scan(self, path):
@@ -73,12 +105,12 @@ class MasqueWindow(QMainWindow):
                 self.list_images.append(path+"/"+file.name)
             else:
                 self.scan(path+"/"+file.name)
-        #après le scan, on met a jour et affiche
+        #après le scan, on met a jour le table widget
         self.table_widget_file_name.appendRow(self.list_images)
-        # self.table_widget_file_name.setParent(self)
+        self.scroll_area_list_images.setWidget(self.table_widget_file_name)
+
         #on affiche le progress bar et le scroll area list
         self.progress_bar.show()
-        self.scroll_area_list_images.setWidget(self.table_widget_file_name)
         self.scroll_area_list_images.show()
 
     def keyPressEvent(self, event: QKeyEvent):
@@ -88,14 +120,14 @@ class MasqueWindow(QMainWindow):
         #image suivant
         if event.key() == Qt.Key_F7:
             if self.stacked_widget_images.currentIndex() == self.stacked_widget_images.count() - 1:
-                QMessageBox.information(None, "Erreur", "Il n'y a plus d'images suivant")
+                QMessageBox.information(None, "Erreur", "Il n'y a plus d'image")
                 return
             self.imageManipilator()
             self.table_widget_file_name.changeCurrentItem(self.stacked_widget_images.currentIndex())
         #image précedent
         elif event.key() == Qt.Key_F3:
             if self.stacked_widget_images.currentIndex() == 0:
-                QMessageBox.information(None, "Erreur", "Il n'y a plus d'images précédent")
+                QMessageBox.information(None, "Erreur", "Il n'y a plus d'image")
                 return
             self.imageManipilator(False)
             self.table_widget_file_name.changeCurrentItem(self.stacked_widget_images.currentIndex())
@@ -118,15 +150,16 @@ class MasqueWindow(QMainWindow):
     def scaleImage(self, is_zoom_plus = True):
             scroll_area = self.stacked_widget_images.widget(self.stacked_widget_images.currentIndex())
             label = scroll_area.widget()
+            
             pixmap = label.pixmap()
             width_pixmap = pixmap.size().width()
             height_pixmap = pixmap.size().height()
             if is_zoom_plus:
-                width_pixmap += 10
-                height_pixmap += 10
+                width_pixmap += 40
+                height_pixmap += 40
             else:
-                width_pixmap -= 10
-                height_pixmap -= 10
+                width_pixmap -= 40
+                height_pixmap -= 40
 
             image_scaled = pixmap.scaled(
                     width_pixmap, height_pixmap, 
@@ -134,7 +167,9 @@ class MasqueWindow(QMainWindow):
                     Qt.SmoothTransformation  # Transformation lisse pour une meilleure qualité
                     # Qt.FastTransformation
                 )
+            #mise a jour de la taille de l'image
             label.setPixmap(image_scaled)
+            # label.setScaledContents(True)
             scroll_area.setWidget(label)
             self.stacked_widget_images.setCurrentWidget(scroll_area)
 
@@ -142,11 +177,34 @@ class MasqueWindow(QMainWindow):
         self.stacked_widget_images.setCurrentIndex(row)
         self.stacked_widget_images.setCurrentWidget(self.stacked_widget_images.widget(row))
 
-            
+    def onOpenDialogRoles(self):
+        self.dialog_widget_roles = DialogRoles()
+        self.dialog_widget_roles.exec_()
+
+    def onOpenDialogUser(self):
+        self.dialog_widget_user = DialogUser()
+        self.dialog_widget_user.exec_()
+        pass
+        # pass
+    def onOpenDialogChamps(self):
+        self.dialog_widget_champs = DialogCdcRegistre()
+        self.dialog_widget_champs.exec_()
+
+    def onOpenDialogTypeChamps(self):
+        self.dialog_widget_type_champs = DialogTypeChamps()
+        self.dialog_widget_type_champs.exec_()
+
+    def onOpenDialogIntervertirChamps(self):
+        self.dialog_widget_intervertir_champs = DialogIntervertirChamps()
+        self.dialog_widget_intervertir_champs.exec_()
 
 
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = MasqueWindow()
-    window.show()
-    sys.exit(app.exec_())
+        
+
+# if __name__ == "__main__":
+    
+# app = QApplication(sys.argv)
+# window = MasqueWindow()
+# window.show()
+
+# sys.exit(app.exec_())

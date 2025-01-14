@@ -3,13 +3,10 @@ from PyQt5.QtCore import pyqtSignal
 
 class TableWidgetFilename(QTableWidget):
 
-    cellClickedSignal = pyqtSignal(int, int)  # Signal personnalisé pour les clics sur les cellules
-
     def __init__(self):
         super().__init__()
 
         self.index_row_selected = 0
-        self.cellClicked.connect(self.emitCellClicked)
 
     def appendRow(self, list_images):
         max_row = len(list_images)
@@ -29,14 +26,6 @@ class TableWidgetFilename(QTableWidget):
         item_selected = self.item(row, 0)
         self.setCurrentItem(item_selected)
         item_selected.setSelected(True)
-
-    def emitCellClicked(self, row, column):
-        self.cellClickedSignal.emit(row, column)
-        # self.index_row_selected = row
-        # print(row)
-        # if hasattr(self.parent(), "stacked_widget_images"):
-        #     print(row)
-        #     self.parent().tableWidgetClicked(row)
 
         
 

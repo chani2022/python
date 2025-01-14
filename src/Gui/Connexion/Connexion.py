@@ -101,11 +101,11 @@ class Ui_Connexion(object):
             # print(hashed_password)
             # sys.exit()
             if PasswordManager.checkPassword(user_plain_password=plain_password,user_hash_password=hashed_password):
-                if user.roles.type == "admin":
-                    self.me.close() #fermeture de la fenetre de connexion
-                    # id_user = user.id
-                    self.masque_window = MasqueWindow(user.id)
-                    self.masque_window.show()
+                # if user.roles.type == "admin":
+                self.me.close() #fermeture de la fenetre de connexion
+                # id_user = user.id
+                self.masque_window = MasqueWindow(user)
+                self.masque_window.show()
             else:
                 self.invalidCredentials()
 

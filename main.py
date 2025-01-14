@@ -21,6 +21,7 @@ if __name__ == "__main__":
     # User.create(nom="ANDRIANARINAIVO", prenom="Chani", matricule=1, password=password_hashed, roles=admin)
 
     app = QtWidgets.QApplication(sys.argv)
+    app.setStyle('Fusion')#available options Windows, windowsvista, Fusion for style
     Connexion = QtWidgets.QWidget()
     ui = Ui_Connexion()
     ui.setupUi(Connexion)
