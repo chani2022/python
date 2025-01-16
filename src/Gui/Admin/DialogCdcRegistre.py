@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QDialog, QTableWidgetItem, QInputDialog, QMessageBox
+from PyQt5.QtWidgets import QDialog, QTableWidgetItem, QInputDialog, QMessageBox, QTableWidget
 from PyQt5.uic import loadUi
 from src.Model.Cdc import Cdc
 from src.Model.Registre import Registre
@@ -21,6 +21,7 @@ class DialogCdcRegistre(QDialog):
 
         self.btn_add_registre.clicked.connect(self.onAddRegistre)
         self.table_widget_registre.cellDoubleClicked.connect(self.onCellRegistreTableWidgetDoubleClicked)
+        self.table_widget_registre.setEditTriggers(QTableWidget.NoEditTriggers)
 
     def initCdc(self):
         max_row = Cdc.select().count()

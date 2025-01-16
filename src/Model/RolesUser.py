@@ -3,7 +3,7 @@ from src.Model.PeeweeSqliteDB import db
 
 
 class Roles(Model):
-    type = CharField()
+    type = CharField(default='NULL')
 
     class Meta:
         database = db

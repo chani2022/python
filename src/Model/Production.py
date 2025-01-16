@@ -6,14 +6,17 @@ from src.Model.Registre import Registre
 from src.Model.Champs import Champs
 
 class Production(Model):
-    valeur_champ = CharField()
-    date_traitement = DateTimeField()
-    nom_image = CharField()
+    valeur_champ = CharField(default='NULL')
+    date_traitement = DateTimeField(default='NULL')
+    nom_image = CharField(default='NULL')
+    annee_registre = CharField(default='NULL')
+    numero_acte = CharField(default='NULL')
 
-    typeChamps = ForeignKeyField(model=User, backref='users')
-    cdc = ForeignKeyField(model=Cdc, backref='cdcs')
-    registre = ForeignKeyField(model=Registre, backref='registres')
-    champs = ForeignKeyField(model=Champs, backref='champs')
+    user = ForeignKeyField(model=User, backref='users', default='NULL')
+    cdc = ForeignKeyField(model=Cdc, backref='cdcs', default='NULL')
+    registre = ForeignKeyField(model=Registre, backref='registres', default='NULL')
+    champs = ForeignKeyField(model=Champs, null= True, backref='champs', default='NULL')
+
 
     class Meta:
         database = db

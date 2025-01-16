@@ -31,20 +31,17 @@
        <widget class="QWidget" name="layoutWidget">
         <layout class="QHBoxLayout" name="horizontalLayout">
          <item>
-          <widget class="QStackedWidget" name="stacked_widget_champs"/>
-         </item>
-         <item>
-          <spacer name="horizontalSpacer">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
+          <widget class="QStackedWidget" name="stacked_widget_champs">
+           <property name="font">
+            <font>
+             <family>Papyrus</family>
+             <pointsize>14</pointsize>
+            </font>
            </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>80</width>
-             <height>20</height>
-            </size>
+           <property name="styleSheet">
+            <string notr="true">color: rgb(0, 0, 0);</string>
            </property>
-          </spacer>
+          </widget>
          </item>
          <item>
           <widget class="QScrollArea" name="scroll_area_list_images">
@@ -65,7 +62,7 @@
              <rect>
               <x>0</x>
               <y>0</y>
-              <width>245</width>
+              <width>372</width>
               <height>574</height>
              </rect>
             </property>
@@ -88,9 +85,9 @@
      <height>21</height>
     </rect>
    </property>
-   <widget class="QMenu" name="menu_nouveau">
+   <widget class="QMenu" name="menu_saisie">
     <property name="title">
-     <string>Nouveau</string>
+     <string>Saisie</string>
     </property>
     <addaction name="action_chargement"/>
    </widget>
@@ -109,7 +106,7 @@
     </property>
     <addaction name="action_intervertir_les_champs"/>
    </widget>
-   <addaction name="menu_nouveau"/>
+   <addaction name="menu_saisie"/>
    <addaction name="menuAdmin"/>
    <addaction name="menuDisposition"/>
   </widget>

@@ -1,8 +1,12 @@
 from peewee import *
 from src.Model.PeeweeSqliteDB import db
 
-class TypeChamps(Model):
-    type_champs = CharField(default='NULL')
+
+class Ville(Model):
+    ville = CharField(null=True)
+    code_commune = CharField(null=True)
+    region = CharField(null=True)
+    departement = CharField(null=True)
 
     class Meta:
         database = db
