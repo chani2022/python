@@ -172,7 +172,6 @@ class MasqueWindow(QMainWindow):
                 message["message"] = "La date de registre est differente de la date d'évènement"
         if 'heure' in name_widget:
             if not DateTimeManager.isTimeValid(date_or_time):
-                
                 message["is_valid"] = False
                 message["message"] = "Heure est invalid"
         return message
@@ -204,7 +203,6 @@ class MasqueWindow(QMainWindow):
             if not info["is_valid"]:
                 QMessageBox.critical(self, "Erreur", info["message"])
                 return
-
             champ = None
             for name_champ in self.list_champs:
                 if name_champ == name:
