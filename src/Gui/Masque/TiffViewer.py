@@ -1,20 +1,26 @@
 from PyQt5.QtGui import QPixmap, QImage
-from PyQt5.QtWidgets import QLabel, QScrollArea
+from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPixmapItem
 from PIL import Image
 import io
 
-class TiffViewer(QScrollArea):
+class TiffViewer(QGraphicsView):
     def __init__(self, tiff_path):
         super().__init__()
         self.load_tiff(tiff_path)
 
     def load_tiff(self, tiff_path):
+
+        scene = QGraphicsScene()
+        self.setScene(scene)
+        pixmap_item = None
+
         extension = tiff_path.split(".")[-1]
         pixmap = None
-        label = QLabel(self)
+
         if extension != 'tif':
             pixmap = QPixmap(tiff_path)
-            label.setPixmap(pixmap)
+            pixmap_item = QGraphicsPixmapItem(pixmap)
+            scene.addItem(pixmap_item)
         else:
             try:
                 # Charger le TIFF avec Pillow
@@ -27,12 +33,10 @@ class TiffViewer(QScrollArea):
                     # Charger les bytes dans un QImage
                     qimage = QImage.fromData(img_data.read())
                     pixmap = QPixmap.fromImage(qimage)
-
-                    # Afficher dans QLabel
-                    label.setPixmap(pixmap)
-                    self.resize(pixmap.width(), pixmap.height())
+                    
+                    pixmap_item = QGraphicsPixmapItem(pixmap)
+                    scene.addItem(pixmap_item)
+                    
             except Exception as e:
-                # self.setText()
                 print(f"Erreur : {e}")
-        # label.setScaledContents(True)
-        self.setWidget(label)
+        

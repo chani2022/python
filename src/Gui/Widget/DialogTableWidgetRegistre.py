@@ -6,7 +6,7 @@ from src.Model.Champs import Champs
 
 class DialogTableWidgetRegistre(QDialog):
 
-    selectTypeRegistreAndFieldsLinks = pyqtSignal(object, object)
+    returnPressed = pyqtSignal(object, object)
 
     def __init__(self, cdc):
         super().__init__()
@@ -40,7 +40,7 @@ class DialogTableWidgetRegistre(QDialog):
                         .order_by(Champs.position)
                     )
             
-            self.selectTypeRegistreAndFieldsLinks.emit(registre, champs)
+            self.returnPressed.emit(registre, champs)
             self.accept() # on ferme la boite de dialogue
 
             

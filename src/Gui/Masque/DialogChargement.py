@@ -42,6 +42,7 @@ class DialogChargement(QDialog):
         )
         if path_source_folder:  # Si un dossier est sélectionné
             root_dir = path_source_folder.split("/")[-1] #le nom du dossier selectionne
+            self.label_path_image.setText(path_source_folder)
             copy_tree(path_source_folder, self.images_path+"/"+root_dir) # copier le dossier et ses sous dossier
             # self.scan(self.images_path+"/"+root_dir)
             self.images_path += "/"+root_dir

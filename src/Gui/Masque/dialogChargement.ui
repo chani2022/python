@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>440</width>
+    <width>470</width>
     <height>302</height>
    </rect>
   </property>
@@ -116,6 +116,13 @@
             </property>
             <property name="text">
              <string>Images ...</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_path_image">
+            <property name="text">
+             <string/>
             </property>
            </widget>
           </item>

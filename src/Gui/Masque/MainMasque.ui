@@ -17,7 +17,7 @@
    <bool>false</bool>
   </property>
   <widget class="QWidget" name="central_widget">
-   <layout class="QVBoxLayout" name="verticalLayout">
+   <layout class="QHBoxLayout" name="horizontalLayout_2">
     <item>
      <widget class="QSplitter" name="splitter_main">
       <property name="orientation">
@@ -44,7 +44,16 @@
           </widget>
          </item>
          <item>
+          <widget class="QTableWidget" name="table_widget_production"/>
+         </item>
+         <item>
           <widget class="QScrollArea" name="scroll_area_list_images">
+           <property name="font">
+            <font>
+             <family>Papyrus</family>
+             <pointsize>12</pointsize>
+            </font>
+           </property>
            <property name="styleSheet">
             <string notr="true">width:48px;</string>
            </property>
@@ -62,7 +71,7 @@
              <rect>
               <x>0</x>
               <y>0</y>
-              <width>372</width>
+              <width>241</width>
               <height>574</height>
              </rect>
             </property>

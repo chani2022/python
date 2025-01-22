@@ -6,7 +6,7 @@ from src.Model.Ville import Ville
 
 class DialogBaseVille(QDialog):
 
-    textRowSelected = pyqtSignal(str, str)
+    returnPressed = pyqtSignal(str, str)
 
     def __init__(self, keyword):
         super().__init__()
@@ -41,7 +41,7 @@ class DialogBaseVille(QDialog):
             ville = self.table_widget_ville.item(self.table_widget_ville.currentRow(),0).text()
             departement = self.table_widget_ville.item(self.table_widget_ville.currentRow(), 1).text()
             
-            self.textRowSelected.emit(ville, departement)
+            self.returnPressed.emit(ville, departement)
             self.accept() # on ferme la boite de dialogue
 
     

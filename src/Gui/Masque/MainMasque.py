@@ -1,8 +1,7 @@
 import sys
 import os
-from PyQt5.QtWidgets import QApplication, QMainWindow, QComboBox, QMessageBox, QProgressBar, QGroupBox, QTableWidget, QVBoxLayout
-from PyQt5.QtWidgets import QLineEdit
-from PyQt5.QtGui import QKeyEvent, QFont
+from PyQt5.QtWidgets import QApplication, QMainWindow, QGraphicsView, QMessageBox, QProgressBar, QLineEdit, QTableWidget
+from PyQt5.QtGui import QKeyEvent
 from PyQt5.uic import loadUi
 from PyQt5.QtCore import Qt
 import os
@@ -25,6 +24,7 @@ from src.Model.Production import Production
 from src.Singleton.AppState import AppState
 from datetime import datetime
 from src.Date.DateTimeManager import DateTimeManager
+from src.Repository.ProductionRepository import ProductionRepository
 #pour le test
 # from TiffViewer import TiffViewer
 # from TableWidgetFilename import TableWidgetFilename
@@ -42,7 +42,7 @@ class MasqueWindow(QMainWindow):
         self.user = user
 
         self.registre_selected = None
-        self.champs_selected = None
+        self.champs_selected = list()
         
         screen = QApplication.primaryScreen()
 
@@ -54,8 +54,12 @@ class MasqueWindow(QMainWindow):
         self.annee_registre = None
         # self.numero_acte = 0
         self.list_champs = list()
+        self.current_index_image = 0
 
         self.data = list()
+        self.data_previous_or_next_acte = {}
+        
+        self.scale_factor = 1
 
         #repositionner le splitter central
         taille_ecran = screen.geometry()
@@ -71,8 +75,10 @@ class MasqueWindow(QMainWindow):
         self.progress_bar.setTextVisible(True)
         self.status_bar.addWidget(self.progress_bar)
 
+
         #on cache par defaut le scroll area image, progressbar
         self.scroll_area_list_images.hide()
+        self.table_widget_production.hide()
         self.progress_bar.hide()
 
         #tableau widget qui contient la liste des nom d'images à saisir
@@ -82,9 +88,10 @@ class MasqueWindow(QMainWindow):
         #signal liste image cliquer
         self.table_widget_file_name.cellDoubleClicked.connect(self.onCellTableWidgetClicked)
         
+        #masquer le menu administration
         if user.roles.type == "user":
-            self.action_gestion_roles.setVisible(False)
-            self.action_gestion_utilisateur.setVisible(False)
+            self.menuAdmin.menuAction().setVisible(False)
+
         #action signal
         self.action_chargement.triggered.connect(self.onOpenDialogChargement)
         self.action_gestion_roles.triggered.connect(self.onOpenDialogRoles)
@@ -104,21 +111,12 @@ class MasqueWindow(QMainWindow):
     
     #chargement des images dans le stack_widget_champs
     def onHandleAnneePathImage(self, annee, path_image, cdc_select):
-        self.appendImageInStackImage(path_image)
+        
         self.annee_registre = annee
         self.cdc_selected = cdc_select
         
-        # self.data["cdc"] = cdc_select
-
-        self.initRegistreByCdc()
-
-    def initRegistreByCdc(self):
-        
-        input_registre = ContainerLineEdit(self.cdc_selected)
-        input_registre.transfertRegistreAndChamps.connect(self.onGetChampsSelectedByRegistre)#signal personnalisé
-        input_registre.nextPositionInStack.connect(self.onNextFieldInStack)
-        self.stacked_widget_champs.addWidget(input_registre)
-        input_registre.setFocus()
+        self.appendChampsInstackChamps()
+        self.appendImageInStackImage(path_image)
     
     
     def onGetChampsSelectedByRegistre(self, registre, champs):
@@ -129,28 +127,64 @@ class MasqueWindow(QMainWindow):
         """
         if self.registre_selected != registre and self.registre_selected is not None:
             self.clearStackWidgetChamps()
-            self.initRegistreByCdc()
+            # self.initRegistreByCdc()
         """ et après, si après on ajoute le nouveau champs"""
         self.appendChampsInstackChamps()
 
     def clearStackWidgetChamps(self):
+
+        #enleve tous les widget dans le stacked        
         while self.stacked_widget_champs.count() > 0:
-            widget = self.stacked_widget_champs.widget(0)  # Obtenez le premier widget
-            self.stacked_widget_champs.removeWidget(widget)  # Retirez le widget du QStackedWidget
-            widget.deleteLater()  # Détruisez le widget pour libérer la mémoire
+            group_box = self.stacked_widget_champs.widget(0)# Obtenez le premier widget
+            layout = group_box.layout()
+            item = layout.itemAt(0)
+            line = item.widget()
+            layout.removeWidget(line)
+            self.stacked_widget_champs.removeWidget(group_box)  # Retirez le widget du QStackedWidget
+            layout.deleteLater() # detruire le layout
+            group_box.deleteLater()  # Détruisez le widget pour libérer la mémoire
 
     def appendChampsInstackChamps(self):
-        for champs in self.champs_selected:
-            # print(champs.label_champ)
-            self.list_champs.append(champs.name_champs)
-            input = ContainerLineEdit(self.cdc_selected, champs)
-            # input.transfertRegistreAndChamps.connect(self.onGetChampsSelectedByRegistre)#signal personnalisé
-            input.nextPositionInStack.connect(self.onNextFieldInStack)
+        type_registre = self.stacked_widget_champs.findChild(QLineEdit, 'type_registre')
+        # print(f"type_registre {type_registre.objectName() if type_registre is not None else type_registre}")
+        if type_registre is None:
+        # if self.stacked_widget_champs.count() == 0:
+            container_line_edit = ContainerLineEdit(self.cdc_selected)
+            """signal personnalisé"""
+            container_line_edit.childrenFindRegistreAndChamps.connect(self.onGetChampsSelectedByRegistre)
+            container_line_edit.nextPositionInStack.connect(self.onNextFieldInStack)
+            container_line_edit.previousPositionInStack.connect(self.onPreviousFieldInStack)
+            container_line_edit.zoom.connect(self.zoom)
+            container_line_edit.scrollDefile.connect(self.moveScrollBar)
+            self.stacked_widget_champs.addWidget(container_line_edit)
+            container_line_edit.setFocus()
+        else:
+            for champs in self.champs_selected:
+                self.list_champs.append(champs.name_champs)
+                container_line_edit = ContainerLineEdit(self.cdc_selected, champs)
+                """signal personnalisé"""
+                container_line_edit.nextPositionInStack.connect(self.onNextFieldInStack)
+                container_line_edit.previousPositionInStack.connect(self.onPreviousFieldInStack) 
+                container_line_edit.zoom.connect(self.zoom)
+                container_line_edit.scrollDefile.connect(self.moveScrollBar)
 
-            self.stacked_widget_champs.addWidget(input)
-            """singleton"""
-            # app_state = AppState()  # Accéder à l'instance unique
-            self.app_state.count_stack = self.stacked_widget_champs.count()
+                self.stacked_widget_champs.addWidget(container_line_edit)
+        """singleton"""
+        self.app_state.count_stack = self.stacked_widget_champs.count()
+        
+    def moveScrollBar(self, arrow_pressed, step):
+        graphic_view = self.stacked_widget_images.currentWidget()
+        print
+        if isinstance(graphic_view, QGraphicsView):
+            match arrow_pressed:
+                case 'up':
+                    graphic_view.verticalScrollBar().setValue(graphic_view.verticalScrollBar().value() - step)
+                case 'down':
+                    graphic_view.verticalScrollBar().setValue(graphic_view.verticalScrollBar().value() + step)
+                case 'left':
+                    graphic_view.horizontalScrollBar().setValue(graphic_view.horizontalScrollBar().value() - step)
+                case 'right':
+                    graphic_view.horizontalScrollBar().setValue(graphic_view.horizontalScrollBar().value() + step)
 
     def checkDateOrTime(self, name_widget, date_or_time):
         # is_valid = True
@@ -163,22 +197,30 @@ class MasqueWindow(QMainWindow):
                 # QMessageBox.critical(self, "Erreur", "La date est invalid")
                 message["is_valid"] = False
                 message["message"] = "La date est invalid"
+                
                 return message
             
             annee = date_or_time[-4:]
             if annee != self.annee_registre:
                 # QMessageBox.critical(self, "Erreur", "La date de registre est differente de la date d'évènement")
                 message["is_valid"] = False
-                message["message"] = "La date de registre est differente de la date d'évènement"
+                message["message"] = "Année de registre est differente de l'année d'évènement" if not 'date_dre' in name_widget else "Année de registre est différente de l'année du dressé"
         if 'heure' in name_widget:
             if not DateTimeManager.isTimeValid(date_or_time):
                 message["is_valid"] = False
                 message["message"] = "Heure est invalid"
         return message
+    
+    def onPreviousFieldInStack(self, previous_position):
+        if previous_position < 0:
+            self.app_state.current_position_line_edit = 0
+            QMessageBox.information(self, "Information", "Il n'y a plus de champs")
+            return
+        self.stacked_widget_champs.setCurrentIndex(previous_position)
 
-    def onNextFieldInStack(self, next_position):
-        """ avant de changer la prochaine widget, on recuper les information
-            du page précedent
+    def onNextFieldInStack(self, current_position_line_edit):
+        """ avant de charger la prochaine widget, on recupere les information
+            du widget précedent (LineEdit)
         """
         data = [ 
             self.cdc_selected, 
@@ -197,12 +239,18 @@ class MasqueWindow(QMainWindow):
                 content = content.upper()
             if 'prenom' in name:
                 content = content.title()
+            # line_edit.setText(content)
 
             #verification date et heure
             info = self.checkDateOrTime(name, content)
-            if not info["is_valid"]:
-                QMessageBox.critical(self, "Erreur", info["message"])
-                return
+            if not info['is_valid']:
+                if "Année de registre" in info['message']:
+                    reply = QMessageBox.question(self, 'Question', f"{info['message']}\nvoulez-vous continuer?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                    if reply == QMessageBox.No:
+                        return
+                else:
+                    QMessageBox.critical(self, "Erreur", info['message'])
+                    return
             champ = None
             for name_champ in self.list_champs:
                 if name_champ == name:
@@ -218,21 +266,23 @@ class MasqueWindow(QMainWindow):
 
         self.data.append(tuple(data))
 
-        self.stacked_widget_champs.setCurrentIndex(next_position) # passer au champ suivant
+        # if self.app_state.count_stack > self.app_state.current_position_line_edit:
+            
 
-        if next_position == self.stacked_widget_champs.count():
+        self.app_state.current_position_line_edit = current_position_line_edit + 1
+        self.stacked_widget_champs.setCurrentIndex(self.app_state.current_position_line_edit) # passer au champ suivant
+
+        if self.app_state.current_position_line_edit == self.stacked_widget_champs.count():
+            #Question sur l'enregistrement dans la base
             reply = QMessageBox.question(
                 self,
                 "Question",
                 "Voulez-vous enregistrer ?",
-                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
+                QMessageBox.Yes | QMessageBox.No,
                 QMessageBox.Yes
             )
 
-            # Vérifier la réponse
             if reply == QMessageBox.Yes:
-                print("L'utilisateur a cliqué sur Oui")
-                #enregistrement dans la base
                 Production.insert_many(
                     self.data, 
                     fields=[
@@ -247,49 +297,59 @@ class MasqueWindow(QMainWindow):
                         Production.nom_image,
                         
                 ]).execute()
-
-                self.data = list()#puis on reinitialise la list
-                """placer dans l'enregistrement, mais pas dans l'acte suivant,
-                    car une image peut contenir plusieur images
-                """
-                self.app_state.numero_acte +=1
+                
+                self.app_state.numero_acte += 1 # incrementation du numéro d'acte
+                self.data = list()#reinitialisation la list
 
                 reply = QMessageBox.question(
                     self,
                     "Question",
                     "Voulez-vous passer au image suivant?",
-                    QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
+                    QMessageBox.Yes | QMessageBox.No,
                     QMessageBox.Yes
                 )
+                
                 #chargement de l'image suivant
                 if reply == QMessageBox.Yes:
-                    self.clearStackWidgetChamps()
-                    self.initRegistreByCdc()
-                    self.imageManipilator() #image suivant
-                    self.app_state.next_position = 0
-                    self.app_state.count_stack = 0
-                    pass
+                    if self.current_index_image < len(self.list_images):
+                        self.current_index_image = self.current_index_image + 1
 
-            elif reply == QMessageBox.No:
-                return
-            else:
-                return
+                        self.clearStackWidgetChamps()
+                        self.appendChampsInstackChamps()
+                        self.nextOrPreviousImage() #image suivant
+                        self.table_widget_file_name.changeCurrentItem(self.current_index_image) #mettre en subrillance l'item suivant
+
+                self.app_state.count_stack = 0
+                self.app_state.current_position_line_edit = 0
+                    
+
+                # elif reply == QMessageBox.No:
+                #     return
+                    # self.clearStackWidgetChamps()
+                    # self.initRegistreByCdc()
+                    # self.nextOrPreviousImage() #image suivant
+                    # self.app_state.current_position_line_edit = 0
+                    # self.app_state.count_stack = 0
+
+                # if reply == QMessageBox.No:
+                #     return
 
     def appendImageInStackImage(self, path):
         for i, file in enumerate(os.scandir(path)):
             if file.is_file():
-                scroll_area = TiffViewer(path+"/"+file.name)
-                self.stacked_widget_images.addWidget(scroll_area)
+                graphic_viewer = TiffViewer(path+"/"+file.name)
+                self.stacked_widget_images.addWidget(graphic_viewer)
                 self.list_images.append(file.name)
             else:
                 self.appendImageInStackImage(path+"/"+file.name)
-        #après le scan, on met a jour le table widget
+        #après le scan, on met a jour le table widget qui contient les nom de fichier
         self.table_widget_file_name.appendRow(self.list_images)
         self.scroll_area_list_images.setWidget(self.table_widget_file_name)
 
         #on affiche le progress bar et le scroll area list
         self.progress_bar.show()
         self.scroll_area_list_images.show()
+        self.table_widget_production.show()
 
     def keyPressEvent(self, event: QKeyEvent):
         """Méthode appelée lorsqu'une touche est pressée."""
@@ -300,56 +360,103 @@ class MasqueWindow(QMainWindow):
             if self.stacked_widget_images.currentIndex() == self.stacked_widget_images.count() - 1:
                 QMessageBox.information(None, "Erreur", "Il n'y a plus d'image")
                 return
-            self.imageManipilator()
+            self.nextOrPreviousImage()
             self.table_widget_file_name.changeCurrentItem(self.stacked_widget_images.currentIndex())
         #image précedent
         elif event.key() == Qt.Key_F3:
             if self.stacked_widget_images.currentIndex() == 0:
                 QMessageBox.information(None, "Erreur", "Il n'y a plus d'image")
                 return
-            self.imageManipilator(False)
-            self.table_widget_file_name.changeCurrentItem(self.stacked_widget_images.currentIndex())
+            else:
+                self.app_state.numero_acte -= 1
+                self.nextOrPreviousImage(False)
+                self.table_widget_file_name.changeCurrentItem(self.stacked_widget_images.currentIndex())
+
+                production_repository = ProductionRepository()
+                data_previous_acte = production_repository.findDataPreviousActe(self.cdc_selected, self.registre_selected, self.user, self.annee_registre)
+
+                #reinitialiser des widgets
+                self.clearStackWidgetChamps()
+                # self.initRegistreByCdc()
+                # self.appendChampsInstackChamps()
+                self.presetDataPreviousActe(data_previous_acte)
+                self.app_state.count_stack = 0
+                self.app_state.current_position_line_edit = 0
             
         #zoom images
         if event.modifiers() & Qt.ControlModifier:
             if event.key() == Qt.Key_Plus or event.key() == Qt.Key_Equal:  # "+" peut être aussi "=" sur certains claviers
-                self.scaleImage()
+                self.zoom()
             elif event.key() == Qt.Key_Minus:
-                self.scaleImage(False)
+                self.zoom(False)
 
-    def imageManipilator(self, is_next_image = True):
+    def presetDataPreviousActe(self, productions):
+        for production in productions:
+            pass
+        # for production in productions:
+        #     print(f"valeur => {production.valeur_champ} name_champs=> {production.champs.name_champs}")
+        # for champs in self.champs_selected:
+        #         self.list_champs.append(champs.name_champs)
+        #         container_line_edit = ContainerLineEdit(self.cdc_selected, champs)
+        #         """signal personnalisé"""
+        #         container_line_edit.nextPositionInStack.connect(self.onNextFieldInStack)
+        #         container_line_edit.previousPositionInStack.connect(self.onPreviousFieldInStack) 
+        #         container_line_edit.zoom.connect(self.zoom)
+        #         container_line_edit.scrollDefile.connect(self.moveScrollBar)
+
+        #         self.stacked_widget_champs.addWidget(container_line_edit)
+
+
+    def nextOrPreviousImage(self, is_next_image = True):
         if is_next_image:
             self.stacked_widget_images.setCurrentIndex(self.stacked_widget_images.currentIndex() + 1)
             self.stacked_widget_images.setCurrentWidget(self.stacked_widget_images.widget(self.stacked_widget_images.currentIndex()))
         else:
             self.stacked_widget_images.setCurrentIndex(self.stacked_widget_images.currentIndex() - 1)
             self.stacked_widget_images.setCurrentWidget(self.stacked_widget_images.widget(self.stacked_widget_images.currentIndex()))
-        
-    def scaleImage(self, is_zoom_plus = True):
-            scroll_area = self.stacked_widget_images.widget(self.stacked_widget_images.currentIndex())
-            label = scroll_area.widget()
-            
-            pixmap = label.pixmap()
-            width_pixmap = pixmap.size().width()
-            height_pixmap = pixmap.size().height()
-            if is_zoom_plus:
-                width_pixmap += 40
-                height_pixmap += 40
-            else:
-                width_pixmap -= 40
-                height_pixmap -= 40
 
-            image_scaled = pixmap.scaled(
-                    width_pixmap, height_pixmap, 
-                    Qt.KeepAspectRatio,  # Conserver le ratio de l'image
-                    Qt.SmoothTransformation  # Transformation lisse pour une meilleure qualité
-                    # Qt.FastTransformation
-                )
-            #mise a jour de la taille de l'image
-            label.setPixmap(image_scaled)
+    def selectRowTableWidgetFileName(self):
+        pass
+        
+
+        
+    def zoom(self, is_zoom_plus):
+            graphic_viewer = self.stacked_widget_images.currentWidget()
+            # label = scroll_area.findChild(QLabel)
+            # label = scroll_area.widget()
             # label.setScaledContents(True)
-            scroll_area.setWidget(label)
-            self.stacked_widget_images.setCurrentWidget(scroll_area)
+
+            # pixmap = label.pixmap()
+            # height = pixmap.height()
+            # size = label.pixmap().size()
+            # width_pixmap = pixmap.width()
+            # height_pixmap = pixmap.height()
+
+            if is_zoom_plus:
+                # width_pixmap = width_pixmap + 50
+                # height_pixmap = height_pixmap + 50
+                graphic_viewer.scale(1.1, 1.1)  # Zoom avant
+            else:
+                # if self.scale_factor > 1:
+                # width_pixmap = width_pixmap - 50
+                # height_pixmap = height_pixmap - 50
+                # self.scale_factor /= 2
+                graphic_viewer.scale(0.9, 0.9)  # Zoom avant
+
+            # size = pixmap.size() * self.scale_factor
+            # image_scaled = pixmap.scaled(
+            #         size,
+            #         # height,
+            #         Qt.KeepAspectRatio,  # Conserver le ratio de l'image
+            #         Qt.SmoothTransformation  # Transformation lisse pour une meilleure qualité
+                    
+            #     )
+            # #mise a jour de la taille de l'image
+            # label.setPixmap(image_scaled)
+            # label.resize(image_scaled.size())
+            # # label.setScaledContents(True)
+            # scroll_area.setWidget(label)
+            # self.stacked_widget_images.setCurrentWidget(scroll_area)
 
     def onCellTableWidgetClicked(self, row, column):
         self.stacked_widget_images.setCurrentIndex(row)

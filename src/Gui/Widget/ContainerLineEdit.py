@@ -4,8 +4,11 @@ from PyQt5.QtCore import pyqtSignal, Qt
 from src.Gui.Widget.LineEdit import LineEdit
 
 class ContainerLineEdit(QGroupBox):
-    transfertRegistreAndChamps = pyqtSignal(object, object)
+    childrenFindRegistreAndChamps = pyqtSignal(object, object)
     nextPositionInStack = pyqtSignal(object)
+    previousPositionInStack = pyqtSignal(object)
+    zoom = pyqtSignal(object)
+    scrollDefile = pyqtSignal(object, object)
 
 
     def __init__(self, cdc,champs = None):
@@ -24,14 +27,15 @@ class ContainerLineEdit(QGroupBox):
                 font-family: 'Papyrus';
                 font-size: 20px;
                 padding: 30 5px;
-                background-color: #E8F5E9;
                 width: 700px;
-                border: none;
             }
             """)
         line_edit = LineEdit(self.champs, self.cdc)
-        line_edit.transfertRegistreAndChamps.connect(self.onGetRegistreAndChamps)
-        line_edit.transfertPositionStack.connect(self.transfertPosition)
+        line_edit.registreAndChampsSelected.connect(self.onGetRegistreAndChamps)
+        line_edit.tabPressed.connect(self.transfertPosition)
+        line_edit.EscapePressed.connect(self.transfertPositionPrevious)
+        line_edit.ctrlPressed.connect(self.transfertZoom)
+        line_edit.ctrlDirectionPressed.connect(self.moveScroll)
         
         box_layout = QVBoxLayout()
         box_layout.addWidget(line_edit)
@@ -40,9 +44,18 @@ class ContainerLineEdit(QGroupBox):
 
     def transfertPosition(self, position):
         self.nextPositionInStack.emit(position)
+
+    def transfertPositionPrevious(self, position):
+        self.previousPositionInStack.emit(position)
         
     def onGetRegistreAndChamps(self, registre, champs):
-        self.transfertRegistreAndChamps.emit(registre, champs)
+        self.childrenFindRegistreAndChamps.emit(registre, champs)
+
+    def transfertZoom(self, is_zoom_plus):
+        self.zoom.emit(is_zoom_plus)
+
+    def moveScroll(self, arrow_pressed, step):
+        self.scrollDefile.emit(arrow_pressed, step)
 
 
     

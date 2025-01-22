@@ -6,8 +6,11 @@ from src.Gui.BaseVille.DialogBaseVille import DialogBaseVille
 
 class LineEdit(QLineEdit):
 
-    transfertRegistreAndChamps = pyqtSignal(object, object)
-    transfertPositionStack = pyqtSignal(object)
+    registreAndChampsSelected = pyqtSignal(object, object)
+    tabPressed = pyqtSignal(object)
+    EscapePressed = pyqtSignal(object)
+    ctrlPressed = pyqtSignal(object)
+    ctrlDirectionPressed = pyqtSignal(object, object)
 
     def __init__(self, champs, cdc):
         super().__init__()
@@ -38,35 +41,74 @@ class LineEdit(QLineEdit):
         self.returnPressed.connect(self.okPressed)
 
     def event(self,event):
+        #champ suivant
         if event.type() == QEvent.KeyPress and event.key() == Qt.Key_Tab:
+            # print(self.objectName())
             self.tabFollow()
+            return True
+        #champ precedent
+        if event.type() == QEvent.KeyPress and event.key() == Qt.Key_Escape:
+            
+            self.EscapeFollow()
+            return True
+        #zoom et defilement image
+        elif event.type() == QEvent.KeyPress and event.modifiers() & Qt.ControlModifier:
+            #zoom
+            if event.key() == Qt.Key_Plus or event.key() == Qt.Key_Equal:  # "+" peut être aussi "=" sur certains claviers
+                self.ctrlFollow(True)
+            elif event.key() == Qt.Key_Minus:
+                self.ctrlFollow(False)
+            #defilement image scrollArea
+            elif event.key() == Qt.Key_Up:
+                self.ctrlDirectionFollow("up")
+            elif event.key() == Qt.Key_Down:
+                self.ctrlDirectionFollow("down")
+            elif event.key() == Qt.Key_Left:
+                self.ctrlDirectionFollow("left")    
+            elif event.key() == Qt.Key_Right:
+                self.ctrlDirectionFollow("right")
             return True
         else:
             return QLineEdit.event(self,event)
-          
+        
+    def ctrlDirectionFollow(self, arrow_pressed):
+        step = 40
+        self.ctrlDirectionPressed.emit(arrow_pressed, step)
+    #zoom
+    def ctrlFollow(self, is_zoom_plus):
+        self.ctrlPressed.emit(is_zoom_plus)
+    #champs suivant
     def tabFollow(self):
-        if self.app_state.count_stack > self.app_state.next_position:
-            self.app_state.next_position += 1
-        self.transfertPositionStack.emit(self.app_state.next_position)
-    
+        # if self.app_state.count_stack > self.app_state.current_position_line_edit:
+        #     self.app_state.current_position_line_edit += 1
+
+        self.tabPressed.emit(self.app_state.current_position_line_edit)
+
+    def EscapeFollow(self):
+        if self.app_state.current_position_line_edit >= 0:
+            self.app_state.current_position_line_edit -= 1
+
+        self.EscapePressed.emit(self.app_state.current_position_line_edit)
+
+    #choix sur les boite de dialogue
     def okPressed(self):
         if self.champs is None:
             dialog = DialogTableWidgetRegistre(self.cdc)
-            dialog.selectTypeRegistreAndFieldsLinks.connect(self.onSelectTypeRegistreAndFieldsLinks)
+            dialog.returnPressed.connect(self.onRegistreChampsSelected)
             dialog.exec_()
         if 'lieu_' in self.objectName():
             dialog = DialogBaseVille(self.text())
-            dialog.textRowSelected.connect(self.onSetLieuEvenement)
+            dialog.returnPressed.connect(self.onVilleSelected)
             dialog.exec_()
 
 
 
-    def onSelectTypeRegistreAndFieldsLinks(self, registre, champs):
+    def onRegistreChampsSelected(self, registre, champs):
         self.setText(registre.type_registre)
 
-        self.transfertRegistreAndChamps.emit(registre, champs)
+        self.registreAndChampsSelected.emit(registre, champs)
 
-    def onSetLieuEvenement(self, ville, departement):
+    def onVilleSelected(self, ville, departement):
         value = ville
         if departement != "":
             value = f"{ville} ({departement})"
