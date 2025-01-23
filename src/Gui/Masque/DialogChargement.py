@@ -11,10 +11,12 @@ class DialogChargement(QDialog):
     def __init__(self):
         super().__init__()
         loadUi("src/Gui/Masque/dialogChargement.ui", self)
+
         self.initCdc()
 
         self.images_path = "images"
         self.cdc_selected = None
+        self.total_files = 0
 
         self.btn_load_image.clicked.connect(self.onLoadImage)
         self.btn_charger.clicked.connect(self.onCharger)
@@ -43,7 +45,8 @@ class DialogChargement(QDialog):
         if path_source_folder:  # Si un dossier est sélectionné
             root_dir = path_source_folder.split("/")[-1] #le nom du dossier selectionne
             self.label_path_image.setText(path_source_folder)
-            copy_tree(path_source_folder, self.images_path+"/"+root_dir) # copier le dossier et ses sous dossier
+            filenames = copy_tree(path_source_folder, self.images_path+"/"+root_dir) # copier le dossier et ses sous dossier
+            self.total_files = len(filenames)
             # self.scan(self.images_path+"/"+root_dir)
             self.images_path += "/"+root_dir
         pass

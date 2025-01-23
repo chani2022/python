@@ -115,9 +115,16 @@
     </property>
     <addaction name="action_intervertir_les_champs"/>
    </widget>
+   <widget class="QMenu" name="menu_exportation">
+    <property name="title">
+     <string>Exportation</string>
+    </property>
+    <addaction name="action_exporter"/>
+   </widget>
    <addaction name="menu_saisie"/>
    <addaction name="menuAdmin"/>
    <addaction name="menuDisposition"/>
+   <addaction name="menu_exportation"/>
   </widget>
   <widget class="QStatusBar" name="status_bar"/>
   <action name="action_chargement">
@@ -148,6 +155,11 @@
   <action name="action_intervertir_les_champs">
    <property name="text">
     <string>Intervertir les champs</string>
+   </property>
+  </action>
+  <action name="action_exporter">
+   <property name="text">
+    <string>Ouvrir ...</string>
    </property>
   </action>
  </widget>

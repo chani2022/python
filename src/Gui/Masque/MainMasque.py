@@ -15,6 +15,7 @@ from src.Gui.Admin.DialogCdcRegistre import DialogCdcRegistre
 from src.Gui.Admin.DialogTypeChamps import DialogTypeChamps
 from src.Gui.Masque.DialogIntervertirChamps import DialogIntervertirChamps
 from src.Gui.Masque.DialogChargement import DialogChargement
+from src.Gui.Masque.DialogExportation import DialogExportation
 from src.Gui.Widget.ContainerLineEdit import ContainerLineEdit
 
 from src.Model.Registre import Registre
@@ -29,12 +30,23 @@ from src.Repository.ProductionRepository import ProductionRepository
 # from TiffViewer import TiffViewer
 # from TableWidgetFilename import TableWidgetFilename
 
+# Constantes pour les facteurs de zoom et le défilement
+ZOOM_FACTOR_IN = 1.1
+ZOOM_FACTOR_OUT = 0.9
+SCROLL_STEP = 50  # Nombre de pixels pour le défilement
 
 class MasqueWindow(QMainWindow):
-    #pour la generalité
+    """
+    Fenêtre principale de l'application de masquage.
+    Permet la visualisation et le traitement des images de registres.
+    """
     def __init__(self, user):
-    #pour le test
-    # def __init__(self):
+        """
+        Initialise la fenêtre principale.
+        
+        Args:
+            user: L'utilisateur connecté à l'application
+        """
         super().__init__()
         # Charger le fichier .ui
         loadUi("src/Gui/Masque/MainMasque.ui", self)
@@ -59,7 +71,7 @@ class MasqueWindow(QMainWindow):
         self.data = list()
         self.data_previous_or_next_acte = {}
         
-        self.scale_factor = 1
+        self.dialog_widget_chargement = None
 
         #repositionner le splitter central
         taille_ecran = screen.geometry()
@@ -100,14 +112,16 @@ class MasqueWindow(QMainWindow):
         self.action_gestion_type_champs.triggered.connect(self.onOpenDialogTypeChamps)
         self.action_intervertir_les_champs.triggered.connect(self.onOpenDialogIntervertirChamps)
 
+        self.action_exporter.triggered.connect(self.onOpenDialogExportation)
+
         self.showMaximized()
 
         # self.stacked_widget_champs.setFocus()
 
     def onOpenDialogChargement(self):
-        dialog_widget_chargement = DialogChargement()
-        dialog_widget_chargement.handleAnneePathImage.connect(self.onHandleAnneePathImage)
-        dialog_widget_chargement.exec_()
+        self.dialog_widget_chargement = DialogChargement()
+        self.dialog_widget_chargement.handleAnneePathImage.connect(self.onHandleAnneePathImage)
+        self.dialog_widget_chargement.exec_()
     
     #chargement des images dans le stack_widget_champs
     def onHandleAnneePathImage(self, annee, path_image, cdc_select):
@@ -132,59 +146,54 @@ class MasqueWindow(QMainWindow):
         self.appendChampsInstackChamps()
 
     def clearStackWidgetChamps(self):
-
-        #enleve tous les widget dans le stacked        
+        """
+        Nettoie tous les widgets du stack de champs.
+        Assure une libération correcte de la mémoire.
+        """
         while self.stacked_widget_champs.count() > 0:
-            group_box = self.stacked_widget_champs.widget(0)# Obtenez le premier widget
-            layout = group_box.layout()
-            item = layout.itemAt(0)
-            line = item.widget()
-            layout.removeWidget(line)
-            self.stacked_widget_champs.removeWidget(group_box)  # Retirez le widget du QStackedWidget
-            layout.deleteLater() # detruire le layout
-            group_box.deleteLater()  # Détruisez le widget pour libérer la mémoire
+            widget = self.stacked_widget_champs.widget(0)
+            self.stacked_widget_champs.removeWidget(widget)
+            widget.setParent(None)  
+            widget.deleteLater()
 
     def appendChampsInstackChamps(self):
+        """
+        Ajoute les champs de saisie dans le stack widget.
+        Crée et configure les conteneurs de champs avec leurs signaux.
+        """
         type_registre = self.stacked_widget_champs.findChild(QLineEdit, 'type_registre')
-        # print(f"type_registre {type_registre.objectName() if type_registre is not None else type_registre}")
+        
         if type_registre is None:
-        # if self.stacked_widget_champs.count() == 0:
+            # Premier champ - création du conteneur initial
             container_line_edit = ContainerLineEdit(self.cdc_selected)
-            """signal personnalisé"""
+            self._connectContainerSignals(container_line_edit)
             container_line_edit.childrenFindRegistreAndChamps.connect(self.onGetChampsSelectedByRegistre)
-            container_line_edit.nextPositionInStack.connect(self.onNextFieldInStack)
-            container_line_edit.previousPositionInStack.connect(self.onPreviousFieldInStack)
-            container_line_edit.zoom.connect(self.zoom)
-            container_line_edit.scrollDefile.connect(self.moveScrollBar)
             self.stacked_widget_champs.addWidget(container_line_edit)
             container_line_edit.setFocus()
         else:
+            # Ajout des champs supplémentaires
             for champs in self.champs_selected:
                 self.list_champs.append(champs.name_champs)
                 container_line_edit = ContainerLineEdit(self.cdc_selected, champs)
-                """signal personnalisé"""
-                container_line_edit.nextPositionInStack.connect(self.onNextFieldInStack)
-                container_line_edit.previousPositionInStack.connect(self.onPreviousFieldInStack) 
-                container_line_edit.zoom.connect(self.zoom)
-                container_line_edit.scrollDefile.connect(self.moveScrollBar)
-
+                self._connectContainerSignals(container_line_edit)
                 self.stacked_widget_champs.addWidget(container_line_edit)
+
         """singleton"""
         self.app_state.count_stack = self.stacked_widget_champs.count()
         
     def moveScrollBar(self, arrow_pressed, step):
         graphic_view = self.stacked_widget_images.currentWidget()
-        print
+        
         if isinstance(graphic_view, QGraphicsView):
             match arrow_pressed:
                 case 'up':
-                    graphic_view.verticalScrollBar().setValue(graphic_view.verticalScrollBar().value() - step)
+                    graphic_view.verticalScrollBar().setValue(graphic_view.verticalScrollBar().value() - SCROLL_STEP)
                 case 'down':
-                    graphic_view.verticalScrollBar().setValue(graphic_view.verticalScrollBar().value() + step)
+                    graphic_view.verticalScrollBar().setValue(graphic_view.verticalScrollBar().value() + SCROLL_STEP)
                 case 'left':
-                    graphic_view.horizontalScrollBar().setValue(graphic_view.horizontalScrollBar().value() - step)
+                    graphic_view.horizontalScrollBar().setValue(graphic_view.horizontalScrollBar().value() - SCROLL_STEP)
                 case 'right':
-                    graphic_view.horizontalScrollBar().setValue(graphic_view.horizontalScrollBar().value() + step)
+                    graphic_view.horizontalScrollBar().setValue(graphic_view.horizontalScrollBar().value() + SCROLL_STEP)
 
     def checkDateOrTime(self, name_widget, date_or_time):
         # is_valid = True
@@ -219,8 +228,12 @@ class MasqueWindow(QMainWindow):
         self.stacked_widget_champs.setCurrentIndex(previous_position)
 
     def onNextFieldInStack(self, current_position_line_edit):
-        """ avant de charger la prochaine widget, on recupere les information
-            du widget précedent (LineEdit)
+        """
+        Gère le passage au champ suivant.
+        Sauvegarde les données si tous les champs sont remplis.
+        
+        Args:
+            current_position_line_edit: Position actuelle dans le stack
         """
         data = [ 
             self.cdc_selected, 
@@ -264,10 +277,7 @@ class MasqueWindow(QMainWindow):
             current_index_image = self.stacked_widget_images.currentIndex()
             data.append(self.list_images[current_index_image])
 
-        self.data.append(tuple(data))
-
-        # if self.app_state.count_stack > self.app_state.current_position_line_edit:
-            
+        self.data.append(tuple(data))    
 
         self.app_state.current_position_line_edit = current_position_line_edit + 1
         self.stacked_widget_champs.setCurrentIndex(self.app_state.current_position_line_edit) # passer au champ suivant
@@ -335,13 +345,26 @@ class MasqueWindow(QMainWindow):
                 #     return
 
     def appendImageInStackImage(self, path):
-        for i, file in enumerate(os.scandir(path)):
-            if file.is_file():
-                graphic_viewer = TiffViewer(path+"/"+file.name)
-                self.stacked_widget_images.addWidget(graphic_viewer)
-                self.list_images.append(file.name)
-            else:
-                self.appendImageInStackImage(path+"/"+file.name)
+        """
+        Charge récursivement les images depuis le chemin spécifié.
+        
+        Args:
+            path: Chemin du dossier contenant les images
+            
+        Gère les erreurs de chargement des fichiers.
+        """
+        try:
+            for i, file in enumerate(os.scandir(path)):
+                if file.is_file():
+                    graphic_viewer = TiffViewer(path+"/"+file.name)
+                    self.stacked_widget_images.addWidget(graphic_viewer)
+                    self.list_images.append(file.name)
+                    """mise a jour de la progress bar"""
+                    self.dialog_widget_chargement.progressBar.setValue(round(i*100/self.dialog_widget_chargement.total_files))
+                else:
+                    self.appendImageInStackImage(path+"/"+file.name)
+        except OSError as e:
+            QMessageBox.critical(self, "Erreur", f"Erreur lors du chargement des images: {str(e)}")
         #après le scan, on met a jour le table widget qui contient les nom de fichier
         self.table_widget_file_name.appendRow(self.list_images)
         self.scroll_area_list_images.setWidget(self.table_widget_file_name)
@@ -352,7 +375,12 @@ class MasqueWindow(QMainWindow):
         self.table_widget_production.show()
 
     def keyPressEvent(self, event: QKeyEvent):
-        """Méthode appelée lorsqu'une touche est pressée."""
+        """
+        Gère les événements clavier pour la navigation et le zoom.
+        
+        Args:
+            event: L'événement clavier reçu
+        """
         key = event.text()
         modifiers = event.modifiers()
         #image suivant
@@ -408,55 +436,18 @@ class MasqueWindow(QMainWindow):
 
 
     def nextOrPreviousImage(self, is_next_image = True):
-        if is_next_image:
-            self.stacked_widget_images.setCurrentIndex(self.stacked_widget_images.currentIndex() + 1)
-            self.stacked_widget_images.setCurrentWidget(self.stacked_widget_images.widget(self.stacked_widget_images.currentIndex()))
-        else:
-            self.stacked_widget_images.setCurrentIndex(self.stacked_widget_images.currentIndex() - 1)
-            self.stacked_widget_images.setCurrentWidget(self.stacked_widget_images.widget(self.stacked_widget_images.currentIndex()))
+        self.stacked_widget_images.setCurrentIndex(self.stacked_widget_images.currentIndex() + 1 if is_next_image else self.stacked_widget_images.currentIndex() - 1)
+        self.stacked_widget_images.setCurrentWidget(self.stacked_widget_images.widget(self.stacked_widget_images.currentIndex()))
 
     def selectRowTableWidgetFileName(self):
         pass
-        
-
-        
+          
     def zoom(self, is_zoom_plus):
             graphic_viewer = self.stacked_widget_images.currentWidget()
-            # label = scroll_area.findChild(QLabel)
-            # label = scroll_area.widget()
-            # label.setScaledContents(True)
-
-            # pixmap = label.pixmap()
-            # height = pixmap.height()
-            # size = label.pixmap().size()
-            # width_pixmap = pixmap.width()
-            # height_pixmap = pixmap.height()
-
             if is_zoom_plus:
-                # width_pixmap = width_pixmap + 50
-                # height_pixmap = height_pixmap + 50
-                graphic_viewer.scale(1.1, 1.1)  # Zoom avant
+                graphic_viewer.scale(ZOOM_FACTOR_IN, ZOOM_FACTOR_IN)  # Zoom avant
             else:
-                # if self.scale_factor > 1:
-                # width_pixmap = width_pixmap - 50
-                # height_pixmap = height_pixmap - 50
-                # self.scale_factor /= 2
-                graphic_viewer.scale(0.9, 0.9)  # Zoom avant
-
-            # size = pixmap.size() * self.scale_factor
-            # image_scaled = pixmap.scaled(
-            #         size,
-            #         # height,
-            #         Qt.KeepAspectRatio,  # Conserver le ratio de l'image
-            #         Qt.SmoothTransformation  # Transformation lisse pour une meilleure qualité
-                    
-            #     )
-            # #mise a jour de la taille de l'image
-            # label.setPixmap(image_scaled)
-            # label.resize(image_scaled.size())
-            # # label.setScaledContents(True)
-            # scroll_area.setWidget(label)
-            # self.stacked_widget_images.setCurrentWidget(scroll_area)
+                graphic_viewer.scale(ZOOM_FACTOR_OUT, ZOOM_FACTOR_OUT)  # Zoom avant
 
     def onCellTableWidgetClicked(self, row, column):
         self.stacked_widget_images.setCurrentIndex(row)
@@ -482,6 +473,22 @@ class MasqueWindow(QMainWindow):
     def onOpenDialogIntervertirChamps(self):
         dialog_widget_intervertir_champs = DialogIntervertirChamps()
         dialog_widget_intervertir_champs.exec_()
+
+    def onOpenDialogExportation(self):
+        dialog_exportation = DialogExportation()
+        dialog_exportation.exec_()
+
+    def _connectContainerSignals(self, container):
+        """
+        Configure les connexions des signaux pour un conteneur de champs.
+        
+        Args:
+            container: Le conteneur de champs à configurer
+        """
+        container.nextPositionInStack.connect(self.onNextFieldInStack)
+        container.previousPositionInStack.connect(self.onPreviousFieldInStack)
+        container.zoom.connect(self.zoom)
+        container.scrollDefile.connect(self.moveScrollBar)
 
 
         
