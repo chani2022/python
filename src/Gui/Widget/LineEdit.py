@@ -1,22 +1,25 @@
-from PyQt5.QtWidgets import QLineEdit
+import re
+from PyQt5.QtWidgets import QLineEdit, QMessageBox
 from PyQt5.QtCore import Qt, QEvent, pyqtSignal
-from src.Gui.Widget.DialogTableWidgetRegistre import DialogTableWidgetRegistre
+from src.Gui.Masque.DialogTableWidgetTypeActe import DialogTableWidgetTypeActe
 from src.Singleton.AppState import AppState
 from src.Gui.BaseVille.DialogBaseVille import DialogBaseVille
+from src.Repository.PrenomRepository import PrenomRepository
+from src.Gui.MessageBox.MessageBox import MessageBox
 
 class LineEdit(QLineEdit):
 
-    registreAndChampsSelected = pyqtSignal(object, object)
-    tabPressed = pyqtSignal(object)
-    EscapePressed = pyqtSignal(object)
+    tabPressed = pyqtSignal()
+    escapePressed = pyqtSignal()
     ctrlPressed = pyqtSignal(object)
     ctrlDirectionPressed = pyqtSignal(object, object)
 
-    def __init__(self, champs, cdc):
+    def __init__(self, champs, famille, numero_acte):
         super().__init__()
 
         self.champs = champs
-        self.cdc = cdc
+        self.numero_acte = numero_acte
+        self.famille = famille
         self.app_state = AppState() #instance global singleton
 
         self.setStyleSheet(
@@ -31,12 +34,12 @@ class LineEdit(QLineEdit):
             """
         )
 
-        self.setObjectName(self.champs.name_champs if self.champs is not None else "type_registre")
+        self.setObjectName(self.champs.name_champs)
 
         #on met a jour le contenu du champs numero acte
         if self.objectName() == 'numero_acte':
             # self.app_state.numero_acte += 1
-            self.setText(str(self.app_state.numero_acte))
+            self.setText(str(self.numero_acte))
         
         self.returnPressed.connect(self.okPressed)
 
@@ -48,7 +51,6 @@ class LineEdit(QLineEdit):
             return True
         #champ precedent
         if event.type() == QEvent.KeyPress and event.key() == Qt.Key_Escape:
-            
             self.EscapeFollow()
             return True
         #zoom et defilement image
@@ -69,6 +71,27 @@ class LineEdit(QLineEdit):
                 self.ctrlDirectionFollow("right")
             return True
         else:
+            """
+            key release evenement classique
+            SEULEMENT POUR LE CDC LOG(logitude)
+            """
+            match self.famille.cdc.nom_cdc:
+                case 'LOG':
+                    if event.type() == QEvent.KeyRelease:
+                        name_object = self.objectName()
+                        content = self.text()
+                        if re.search(r'prenom', name_object):
+                            pass
+                        elif re.search(r'nom', name_object):
+                            """
+                            TOUS EN MAJUSCULE DAN LE CHAMP
+                            """
+                            self.setText(content.upper())
+                        elif re.search(r'numero', name_object):
+                            if re.search(r"_acte",name_object):
+                                self.setText(content.upper())
+
+
             return QLineEdit.event(self,event)
         
     def ctrlDirectionFollow(self, arrow_pressed):
@@ -79,38 +102,34 @@ class LineEdit(QLineEdit):
         self.ctrlPressed.emit(is_zoom_plus)
     #champs suivant
     def tabFollow(self):
-        # if self.app_state.count_stack > self.app_state.current_position_line_edit:
-        #     self.app_state.current_position_line_edit += 1
-
-        self.tabPressed.emit(self.app_state.current_position_line_edit)
+        self.tabPressed.emit()
 
     def EscapeFollow(self):
-        if self.app_state.current_position_line_edit >= 0:
-            self.app_state.current_position_line_edit -= 1
-
-        self.EscapePressed.emit(self.app_state.current_position_line_edit)
+        self.escapePressed.emit()
 
     #choix sur les boite de dialogue
     def okPressed(self):
-        if self.champs is None:
-            dialog = DialogTableWidgetRegistre(self.cdc)
-            dialog.returnPressed.connect(self.onRegistreChampsSelected)
-            dialog.exec_()
-        if 'lieu_' in self.objectName():
-            dialog = DialogBaseVille(self.text())
-            dialog.returnPressed.connect(self.onVilleSelected)
-            dialog.exec_()
+        """famille dialog"""
+        match self.famille.cdc.nom_cdc:
+            case 'LOG':
+                if re.search(r'type_', self.objectName()):
+                    dialog = DialogTableWidgetTypeActe(self.famille)
+                    dialog.getTypeActe.connect(self.onGetTypeActeSelected)
+                    dialog.exec_()
+                if re.search(r'lieu_|ville_', self.objectName()):
+                    dialog = DialogBaseVille(self.text())
+                    dialog.returnPressed.connect(self.onVilleSelected)
+                    dialog.exec_()
 
+    def onGetTypeActeSelected(self, TypeActe):
+        self.setText(TypeActe.valeur)
 
-
-    def onRegistreChampsSelected(self, registre, champs):
-        self.setText(registre.type_registre)
-
-        self.registreAndChampsSelected.emit(registre, champs)
+        # self.onGetTypeActe.emit(TypeActe)
 
     def onVilleSelected(self, ville, departement):
         value = ville
         if departement != "":
             value = f"{ville} ({departement})"
         self.setText(value)
+
     

@@ -31,6 +31,11 @@
      <property name="title">
       <string>Cdc</string>
      </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_2">
+      <item>
+       <widget class="QTableWidget" name="table_widget_cdc"/>
+      </item>
+     </layout>
     </widget>
    </item>
    <item>
@@ -42,12 +47,26 @@
       </font>
      </property>
      <property name="title">
-      <string>Registre</string>
+      <string>Famille</string>
      </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_3">
+      <item>
+       <widget class="QTableWidget" name="table_widget_famille"/>
+      </item>
+     </layout>
     </widget>
    </item>
    <item>
-    <widget class="QTableWidget" name="table_widget_champs"/>
+    <widget class="QGroupBox" name="groupBox">
+     <property name="title">
+      <string>Champs à intervertir</string>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_5">
+      <item>
+       <widget class="QTableWidget" name="table_widget_champs"/>
+      </item>
+     </layout>
+    </widget>
    </item>
    <item>
     <layout class="QVBoxLayout" name="verticalLayout_2">

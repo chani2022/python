@@ -18,31 +18,19 @@ class TableWidgetFilename(QTableWidget):
         self.setHorizontalHeaderLabels(["Nom du fichier"])
         for i,filename in enumerate(list_images):
             self.setItem(i,0, QTableWidgetItem(filename))
-            if i == 0:
-                default_item = self.item(0, 0)
-                self.setCurrentItem(default_item)
-                # default_item.setSelected(True)
-                default_item.setBackground(QColor("blue"))
         self.setColumnWidth(0, 400)
 
     def changeCurrentItem(self, row):
+        """
+        mettre en subrillance la ligne selectionner
+        et les autres, couleur par default
+        """
         rows = self.rowCount()
         for i in range(rows):
             item = self.item(i, 0)
             if row == i:
                 self.setCurrentItem(item)
             item.setBackground(QColor("blue") if row == i else Qt.transparent)
-        # for item in items:
-        #     background = None
-        #     if item.row() == row:
-        #         background = "lightblue"
-        #         self.setCurrentItem(item)
-        #     item.setBackground(QColor(background))
-        # item_selected = self.item(row, 0)
-        # item_selected.setBackground(QColor("lightblue"))
-        # item_selected.setSelected(True)
-
-        # self.setCurrentItem(item_selected)
         
         
 

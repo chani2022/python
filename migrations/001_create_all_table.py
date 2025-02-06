@@ -36,96 +36,81 @@ with suppress(ImportError):
 
 def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     """Write your migrations here."""
-    @migrator.create_model
-    class TypeChamps(pw.Model):
-        id = pw.AutoField()
-        type_champs = pw.CharField(default='NULL', max_length=255)
-
-        class Meta:
-            table_name = "typechamps"
-
+    
     @migrator.create_model
     class Cdc(pw.Model):
         id = pw.AutoField()
         nom_cdc = pw.CharField(default='NULL', max_length=255)
+        # cdc = pw.ForeignKeyField(column_name='cdc_id', default='NULL', field='id', model=migrator.orm['cdc'])
 
         class Meta:
             table_name = "cdc"
 
     @migrator.create_model
-    class Registre(pw.Model):
+    class Famille(pw.Model):
         id = pw.AutoField()
-        type_registre = pw.CharField(default='NULL', max_length=255)
+        nom_famille = pw.CharField(default='NULL', max_length=255)
         cdc = pw.ForeignKeyField(column_name='cdc_id', default='NULL', field='id', model=migrator.orm['cdc'])
 
         class Meta:
-            table_name = "registre"
-
-    
+            table_name = "famille"
 
     @migrator.create_model
-    class Champs(pw.Model):
+    class TypeActe(pw.Model):
         id = pw.AutoField()
-        label_champ = pw.CharField(default='NULL', max_length=255)
-        name_champs = pw.CharField(default='NULL', max_length=255)
-        obligatoire = pw.BooleanField(default=True)
-        position = pw.IntegerField(default='NULL')
-        typeChamps = pw.ForeignKeyField(column_name='typeChamps_id', default='NULL', field='id', model=migrator.orm['typechamps'])
-        registre = pw.ForeignKeyField(column_name='registre_id', default='NULL', field='id', model=migrator.orm['registre'])
+        nom_type_acte = pw.CharField(default='NULL', max_length=255)
+        valeur = pw.CharField(default='NULL', max_length=255)
+        famille = pw.ForeignKeyField(column_name='famille_id', default='NULL', field='id', model=migrator.orm['famille'])
 
         class Meta:
-            table_name = "champs"
-    
-    @migrator.create_model
-    class Roles(pw.Model):
-        id = pw.AutoField()
-        type = pw.CharField(default='NULL', max_length=255)
-
-        class Meta:
-            table_name = "roles"
+            table_name = "typeacte"
 
     @migrator.create_model
-    class User(pw.Model):
+    class Naissance(pw.Model):
         id = pw.AutoField()
-        nom = pw.CharField(default='NULL', max_length=255)
-        prenom = pw.CharField(default='NULL', max_length=255)
-        matricule = pw.IntegerField(default='NULL', unique=True)
-        password = pw.CharField(default='NULL', max_length=255)
-        roles = pw.ForeignKeyField(column_name='roles_id', default='NULL', field='id', model=migrator.orm['roles'])
+        code_commune = pw.CharField(max_length=255)
+        code_famille_acte = pw.CharField(max_length=255)
+        numero_registre = pw.CharField(max_length=255)
+        numero_acte = pw.CharField(max_length=255)
+        code_etat = pw.CharField(max_length=255)
+        code_sexe = pw.CharField(max_length=255)
+        nom_principal = pw.CharField(max_length=255)
+        prenom_principal = pw.CharField(max_length=255)
+        lieu_naissance_principal = pw.CharField(max_length=255)
+        date_naissance_principal = pw.DateField()
+        rue_domicile_principal = pw.CharField(max_length=255)
+        ville_domicile_principal = pw.CharField(default='NULL', max_length=255)
+        nom_pere = pw.CharField(max_length=255)
+        prenom_pere = pw.CharField(max_length=255)
+        lieu_naissance_pere = pw.CharField(default='NULL', max_length=255)
+        date_naissance_pere = pw.DateField()
+        rue_domicile_pere = pw.CharField(default='NULL', max_length=255)
+        ville_domicile_pere = pw.CharField(default='NULL', max_length=255)
+        nom_mere = pw.CharField(default='NULL', max_length=255)
+        prenom_mere = pw.CharField(default='NULL', max_length=255)
+        lieu_naissance_mere = pw.CharField(default='NULL', max_length=255)
+        date_naissance_mere = pw.DateField()
+        rue_domicile_mere = pw.CharField(default='NULL', max_length=255)
+        ville_domicile_mere = pw.CharField(default='NULL', max_length=255)
+        date_evenement = pw.DateField()
+        lieu_evenement = pw.CharField(default='NULL', max_length=255)
+        heure_evenement = pw.TimeField()
+        date_dresse = pw.DateField(default='NULL')
+        heure_dresse = pw.TimeField(default='NULL')
+        type_acte = pw.ForeignKeyField(column_name='type_acte_id', field='id', model=migrator.orm['typeacte'])
+        famille = pw.ForeignKeyField(column_name='famille_id', field='id', model=migrator.orm['famille'])
 
         class Meta:
-            table_name = "user"
-
-    @migrator.create_model
-    class Production(pw.Model):
-        id = pw.AutoField()
-        valeur_champ = pw.CharField(default='NULL', max_length=255)
-        date_traitement = pw.DateTimeField(default='NULL')
-        nom_image = pw.CharField(default='NULL', max_length=255)
-        annee_registre = pw.CharField(default='NULL', max_length=255)
-        numero_acte = pw.CharField(default='NULL', max_length=255)
-        user = pw.ForeignKeyField(column_name='user_id', default='NULL', field='id', model=migrator.orm['user'])
-        cdc = pw.ForeignKeyField(column_name='cdc_id', default='NULL', field='id', model=migrator.orm['cdc'])
-        registre = pw.ForeignKeyField(column_name='registre_id', default='NULL', field='id', model=migrator.orm['registre'])
-        champs = pw.ForeignKeyField(column_name='champs_id', default='NULL', field='id', model=migrator.orm['champs'], null=True)
-
-        class Meta:
-            table_name = "production"
+            table_name = "naissance"
 
 
 def rollback(migrator: Migrator, database: pw.Database, *, fake=False):
     """Write your rollback migrations here."""
     
-    migrator.remove_model('production')
-
-    migrator.remove_model('typechamps')
-
-    migrator.remove_model('roles')
-
-    migrator.remove_model('user')
-
-    migrator.remove_model('champs')
-
-    migrator.remove_model('registre')
-
     migrator.remove_model('cdc')
+
+    migrator.remove_model('naissance')
+
+    migrator.remove_model('typeacte')
+
+    migrator.remove_model('famille')

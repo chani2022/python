@@ -1,0 +1,281 @@
+*cdc
+      - LOG
+        #FAMILLE
+            /NAISSANCE
+                #FORMATE IMAGE
+                  A0N19800012341.TIF (page 1 de l’acte de naissance de la commune principale de l’année 1980 numéro 1234)
+                  A0N19800012342.TIF (page 2 de l’acte de naissance de la commune principale de l’année 1980 numéro 1234)
+                #FORMATAGE FICHIER
+                  Ligne 1
+                    |A0|;|N|;|2000|;;|000018|;|0|;|2|;|PERRIN|;;;;;|PAULE|;;;;|20000102|;|Démonstration (HautRhin)|;|20000102|;|1, rue des Allouettes|;|1000|;|20000103|;|0930|;|1, rue des Bois|;|Démonstration(Haut-Rhin)|;|Annotation|;;|N80011|;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                  Ligne 2 (Père)
+                    |A0|;|N|;|2000|;;|000018|;|1|;|1|;|PERRIN|;;;;;|Pierre|;;;;|19801003|;|Démonstration (HautRhin)|;|20000102|;;|1000|;|20000103|;|930|;|1, rue des Bois|;|Démonstration (HautRhin)|;;;|N80011|;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                  Ligne 3 (Mère)
+                    |A0|;|N|;|2000|;;|000018|;|2|;|2|;|DUPONT|;;;;;|Martine|;;;;|19821104|;|Démonstration (HautRhin)|;|20000102|;;|1000|;|20000103|;|0930|;|1, rue des Bois|;|Démonstration (HautRhin)|;;;|N80011|;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                #CHAMPS
+                    /code_commune
+                        *valeur_possible
+                            A0 : commune_principale
+                            A1 : commune_annexe 1 (ou Mairie Annexe 1)
+                            A2 : Commune Annexe 2 (ou Mairie Annexe 2)
+                            ... etc
+                        *obligatoire
+                            oui
+                        *regle
+                            vide
+                        *affichage
+                            non
+                    /code_famille_d'acte
+                        *valeur_possible
+                            N : Naissances (et Reconnaissances si le registre n’est pas séparé)
+                        *obligatoire
+                            oui
+                        *regle
+                            vide
+                        *affichage
+                            non
+                    /numero_registre
+                        *valeur_possible
+                            ex: 2000, 2000A, 2000BIS
+                        *obligatoire
+                            oui
+                        *regle
+                            Année du registre sur 4 chiffres.
+                            Ensuite il peut comporter des chiffres ou des lettres non accentuées. 
+                            Il ne peut pas dépasser 7 caractères (« 2000 », « 2000A », « 2000BIS »)
+                            Majuscule
+                        *affichage
+                            non
+                    /vide
+                    /numero_acte
+                      *valeur_possible
+                          ex: 1, 2, 1B, 1BIS
+                      *obligatoire
+                          oui
+                      *regle
+                          formatage => Numéro d’acte complété avec des zéros à gauche.
+                                      S’il s’agit d’un acte Bis, le numéro doit être complété avec une lettre sans que le numéro complet ne dépasse la longueur de 6
+                                      caractères (« 00001B », « 001BIS »)
+                                      ex: 1 => 000001, 2 => 000002, 1B => 00001B, 1BIS => 001BIS
+                      *affichage
+                          oui
+                    /code_etat
+                      *valeur_possible
+                          ex: 0:enfant 1:Père 2:Mère
+                      *obligatoire
+                          oui
+                      *regle
+                          formatage => En plus de la ligne de l'individu principal, 
+                                      une ligne supplémentaire doit être ajoutée par personne faisant partie de la filiation
+                                      en respectant l’ordre suivant :
+                                        Actes de naissance, reconnaissance, décès et transcription :
+                                          Ligne 1, code état «0» : enfant /défunt
+                                          Ligne 2, code état «1» : père
+                                          Ligne 3, code état «2» : mère
+                                        Actes de mariage :
+                                          Ligne 1, code état «0» : époux
+                                          Ligne 2, code état «1» : père époux
+                                          Ligne 3, code état «2» : mère époux
+                                          Ligne 4, code état «0» : épouse
+                                          Ligne 5, code état «1» : père épouse
+                                          Ligne 6, code état «2» : mère épouse
+                      *affichage
+                          non
+
+                    /code_sexe
+                      *valeur_possible
+                          1:Masculin 2:Féminin 3:Indéterminé
+                      *obligatoire
+                          oui
+                      *regle
+                          vide
+                      *affichage
+                          oui
+                    /nom
+                      *valeur_possible
+                          ex: TEST
+                      *obligatoire
+                          oui
+                      *regle
+                          Les caractères accentués seront toujours indiqués en minuscules. Les caractères majuscules accentués sont à proscrire. 
+                          Cette remarque est valable même s’il s’agit de la 1ère lettre du nom (IGREC 195).
+                          Les caractères acceptés restent limités à ceux qui figurent dans la table ASCII.
+                          Si le nom n’apparaît pas dans l’acte, cas de constat de décès, la valeur à indiquer par défaut est « X »
+                          Dans certains cas les différents noms sont séparés par un caractère « espace » ou « - - » (adjonction de nom).
+                      *affichage
+                          oui
+                    /vide
+                      *valeur_possible
+                          Nom(s) du conjoint
+                    /vide
+                    /vide
+                    /vide
+                    /prenom
+                      *valeur_possible
+                          ex: test-test-tést
+                      *obligatoire
+                          oui
+                      *regle
+                          Chaque prénom doit être séparé par une virgule (« , »), sauf contre-indication du client
+                          Les prénoms composés sont séparés par un tiret (« -»).
+                          Les caractères accentués seront toujours indiqués en minuscules, sauf contre-indication du client
+
+                          vide s’il s’agit d’une reconnaissance anticipée et de l’individu principal
+                      *affichage
+                          oui
+                    /vide           
+                    /vide
+                    /vide
+                    /date_naissance
+                      *valeur_possible
+                          ex: 01011952
+                      *obligatoire
+                          oui
+                      *regle
+                          formatage => Format AAAAMMJJ (AAAA : année, MM : mois, JJ : jour)
+                                      Si la date est obligatoire, les règles de saisie sont :
+                                      Si le jour est inconnu : « AAAAMM00 »
+                                      Si le jour et le mois sont inconnus : « AAAA0000 »
+                                      Si le mois est inconnu - non géré, seule valeur à saisir : « AAAA0000 »
+                                      Si l’année est inconnue - non géré, seule valeur à saisir : « 10000101 »
+                      *affichage
+                          oui
+                    /lieu_naissance
+                      *valeur_possible
+                        Individu principal et naissance dans la commune : n°, nom de la rue
+                        Autre cas : Commune (dép. ou pays en toutes lettres)
+                      *obligatoire
+                        oui
+                      *regle
+                        non
+                      *affichage
+                        oui
+                    /date_evenement
+                      *valeur_possible
+                          Date de naissance de l’enfant s’il s’agit d’une naissance
+                          Date de reconnaissance s’il s’agit d’une reconnaissance
+                      *obligatoire
+                        oui
+                      *regle
+                        Formatage => AAAAMMJJ (AAAA : année, MM : mois, JJ : jour)
+                                    Si la date est obligatoire, les règles de saisie sont :
+                                    Si le jour est inconnu : « AAAAMM00 »
+                                    Si le jour et le mois sont inconnus : « AAAA0000 »
+                                    Si le mois est inconnu - non géré, seule valeur à saisir : « AAAA0000 »
+                                    Si l’année est inconnue - non géré, seule valeur à saisir : « 10000101 »
+                      *affichage
+                        oui
+                    /lieu_evenement
+                      *valeur_possible
+                        Individu principal et décès dans la commune : n°, nom de la rue
+                        Autre cas : Commune (dép. ou pays en toutes lettres)
+                      *obligatoire
+                        non
+                      *regle
+                        vide
+                      *affichage
+                        oui
+                    /heure_evenement
+                      *valeur_possible
+                        Heure de naissance de l’enfant s’il s’agit d’une naissance
+                        Heure de reconnaissance s’il s’agit d’une reconnaissance
+                        ex:HHMM
+                      *obligatoire
+                        oui
+                      *regle
+                        Format HHMM (HH : heure, MM : minutes - Exception pour 24h00 soit 2359 ou 0001)
+                      *affichage
+                        oui
+                    /date_dresse
+                      *valeur_possible
+                        Date de dresse de l’enfant s’il s’agit d’une naissance
+                        Date de dresse s’il s’agit d’une reconnaissance
+                      *obligatoire
+                        non
+                      *regle
+                        Formatage => AAAAMMJJ (AAAA : année, MM : mois, JJ : jour)
+                                    Si la date est obligatoire, les règles de saisie sont :
+                                    Si le jour est inconnu : « AAAAMM00 »
+                                    Si le jour et le mois sont inconnus : « AAAA0000 »
+                                    Si le mois est inconnu - non géré, seule valeur à saisir : « AAAA0000 »
+                                    Si l’année est inconnue - non géré, seule valeur à saisir : « 10000101 »
+                      *affichage
+                        oui
+                    /heure_dresse
+                      *valeur_possible
+                        Heure de dresse de l’enfant s’il s’agit d’une naissance
+                        Heure de dresse s’il s’agit d’une reconnaissance
+                        ex:HHMM
+                      *obligatoire
+                        non
+                      *regle
+                        Format HHMM (HH : heure, MM : minutes - Exception pour 24h00 soit 2359 ou 0001)
+                      *affichage
+                        oui
+                    /Rue domicile
+                      *valeur_possible
+                        n°, nom de la rue
+                      *obligatoire
+                        non
+                      *regle
+                        vide
+                      *affichage
+                        oui
+                    /Ville domicile
+                      *valeur_possible
+                        Commune (dép. ou pays en toutes lettres)
+                      *obligatoire
+                        non
+                      *affichage 
+                        oui
+                    /Annotation
+                      *valeur_possible
+                        Commentaire pour l’acte (« acte incomplet » par exemple).
+                        Cette annotation ne doit être renseignée que pour la ligne ayant un code état
+                        égal à « 0 »
+                      *affichage
+                        oui
+                    /vide
+                    /Type d’acte
+                      *valeur_possible
+                        Nom: Naissances, valeur: N80011
+                        Nom: Jugements d’adoption plénière, valeur: N80014
+                        Nom: Jugements déclaratifs de naissance, valeur: N80015
+                        Nom: Changement de nom, valeur: N80018
+                        Nom: Changement de prénom, valeur: N80019
+                        
+                        Nom: Avant – Après, valeur: N80012
+                        Nom: Transcriptions, valeur: N80013
+                        Nom: Reconnaissance avant, valeur: N80016
+                        Nom: Reconnaissance après, valeur: N80017
+                      *obligatoire
+                        oui
+                      *regle
+                        choix
+                      *affichage
+                        oui
+                    /vide
+                    /vide
+                    /vide
+                    /vide
+                    /vide
+                    /vide
+                    /vide
+                    /vide
+                    /vide
+
+          /MARIAGE
+          /DECES
+          /RECONNAISSANCE
+                #CHAMPS
+                /type_acte
+                  *valeur_possible
+                    
+                  *obligatoire
+                    oui
+                  *regle
+                    choix
+                  *affichage
+                    oui
+          /TRANSCRIPTION
+          /UNIQUE

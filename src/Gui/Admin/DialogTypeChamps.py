@@ -1,6 +1,5 @@
 from PyQt5.QtWidgets import QDialog, QInputDialog, QTableWidgetItem
 from PyQt5.uic import loadUi
-from src.Model.TypeChamps import TypeChamps
 
 class DialogTypeChamps(QDialog):
 
@@ -14,16 +13,18 @@ class DialogTypeChamps(QDialog):
 
     
     def init(self):
-        self.table_widget_type_champs.setRowCount(TypeChamps.select().count())
-        self.table_widget_type_champs.setColumnCount(1)
-        self.table_widget_type_champs.setHorizontalHeaderLabels(["Type de champs"])
-        for i,role in enumerate(TypeChamps.select()):
-            self.table_widget_type_champs.setItem(i,0, QTableWidgetItem(role.type_champs))
-        self.table_widget_type_champs.setColumnWidth(0, 150)
+        pass
+        # self.table_widget_type_champs.setRowCount(TypeChamps.select().count())
+        # self.table_widget_type_champs.setColumnCount(1)
+        # self.table_widget_type_champs.setHorizontalHeaderLabels(["Type de champs"])
+        # for i,role in enumerate(TypeChamps.select()):
+        #     self.table_widget_type_champs.setItem(i,0, QTableWidgetItem(role.type_champs))
+        # self.table_widget_type_champs.setColumnWidth(0, 150)
 
     def onAddTypeChamps(self):
-        text, ok = QInputDialog.getText(self, "Ajout type de champs", "type de champs:")
-        if ok:
-            TypeChamps.create(type_champs=text)
-            self.init()
+        pass
+        # text, ok = QInputDialog.getText(self, "Ajout type de champs", "type de champs:")
+        # if ok:
+        #     TypeChamps.create(type_champs=text)
+        #     self.init()
 

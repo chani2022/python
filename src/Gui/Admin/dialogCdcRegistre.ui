@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Gestion masque</string>
+   <string>Gestion cdc et famille</string>
   </property>
   <layout class="QHBoxLayout" name="horizontalLayout_3">
    <item>
@@ -75,7 +75,7 @@ color: rgb(255, 255, 255);</string>
       </font>
      </property>
      <property name="title">
-      <string>Registre</string>
+      <string>Famille</string>
      </property>
      <layout class="QHBoxLayout" name="horizontalLayout_2">
       <item>
@@ -96,7 +96,7 @@ color: rgb(255, 255, 255);</string>
 color: rgb(255, 255, 255);</string>
           </property>
           <property name="text">
-           <string>Ajout de registre</string>
+           <string>Ajout de famille</string>
           </property>
          </widget>
         </item>

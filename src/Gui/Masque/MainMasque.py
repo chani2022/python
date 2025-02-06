@@ -1,6 +1,9 @@
 import sys
+import math
 import os
-from PyQt5.QtWidgets import QApplication, QMainWindow, QGraphicsView, QMessageBox, QProgressBar, QLineEdit, QTableWidget
+import re
+from datetime import datetime, time
+from PyQt5.QtWidgets import QApplication, QMainWindow, QGraphicsView, QMessageBox, QProgressBar, QLineEdit, QTableWidget, QTableWidgetItem
 from PyQt5.QtGui import QKeyEvent
 from PyQt5.uic import loadUi
 from PyQt5.QtCore import Qt
@@ -11,31 +14,39 @@ from src.Gui.Masque.TiffViewer import TiffViewer
 from src.Gui.Masque.TableWidgetFilename import TableWidgetFilename
 from src.Gui.Admin.DialogRoles import DialogRoles
 from src.Gui.Admin.DialogUser import DialogUser
-from src.Gui.Admin.DialogCdcRegistre import DialogCdcRegistre
+from src.Gui.Admin.DialogCdcFamille import DialogCdcFamille
 from src.Gui.Admin.DialogTypeChamps import DialogTypeChamps
 from src.Gui.Masque.DialogIntervertirChamps import DialogIntervertirChamps
 from src.Gui.Masque.DialogChargement import DialogChargement
 from src.Gui.Masque.DialogExportation import DialogExportation
 from src.Gui.Widget.ContainerLineEdit import ContainerLineEdit
 
-from src.Model.Registre import Registre
+from src.Model.TypeActe import TypeActe
 from src.Model.Champs import Champs
-from src.Model.Production import Production
+from src.Model.Famille import Famille
 
 from src.Singleton.AppState import AppState
 from datetime import datetime
 from src.Date.DateTimeManager import DateTimeManager
-from src.Repository.ProductionRepository import ProductionRepository
+from src.Repository.NaissanceRepository import NaissanceRepository
+from src.Validator.Validator import Validator
+from src.Gui.MessageBox.MessageBox import MessageBox
+from src.Date.DateTimeManager import DateTimeManager
+
+
 #pour le test
 # from TiffViewer import TiffViewer
 # from TableWidgetFilename import TableWidgetFilename
 
-# Constantes pour les facteurs de zoom et le défilement
-ZOOM_FACTOR_IN = 1.1
-ZOOM_FACTOR_OUT = 0.9
-SCROLL_STEP = 50  # Nombre de pixels pour le défilement
+
 
 class MasqueWindow(QMainWindow):
+
+    # Constantes pour les facteurs de zoom et le défilement
+    ZOOM_FACTOR_IN = 1.1
+    ZOOM_FACTOR_OUT = 0.9
+    SCROLL_STEP = 50  # Nombre de pixels pour le défilement
+
     """
     Fenêtre principale de l'application de masquage.
     Permet la visualisation et le traitement des images de registres.
@@ -53,8 +64,12 @@ class MasqueWindow(QMainWindow):
         
         self.user = user
 
-        self.registre_selected = None
-        self.champs_selected = list()
+        self.data = {
+            "user": self.user
+        }
+
+        # self.validator = None
+        self.champs = list()
         
         screen = QApplication.primaryScreen()
 
@@ -62,13 +77,18 @@ class MasqueWindow(QMainWindow):
 
         self.list_images = list()
         self.images_path = "images"
-        self.cdc_selected = None
-        self.annee_registre = None
+        self.numero_acte = 1
+        # self.cdc_selected = None
+        # self.annee_registre = None
+        self.famille_selected = None
+        self.is_1_file_many_acte = None
+        # self.type_acte = None
         # self.numero_acte = 0
         self.list_champs = list()
         self.current_index_image = 0
+        self.current_index_field = 0
 
-        self.data = list()
+        # self.data = list()
         self.data_previous_or_next_acte = {}
         
         self.dialog_widget_chargement = None
@@ -90,15 +110,16 @@ class MasqueWindow(QMainWindow):
 
         #on cache par defaut le scroll area image, progressbar
         self.scroll_area_list_images.hide()
-        self.table_widget_production.hide()
         self.progress_bar.hide()
+        self.table_widget_production.hide()
+        self.table_widget_production.setEditTriggers(QTableWidget.NoEditTriggers)  # Désactive l'édition pour tout le tableau
 
         #tableau widget qui contient la liste des nom d'images à saisir
         self.table_widget_file_name = TableWidgetFilename()
         self.table_widget_file_name.hide()
         self.table_widget_file_name.setEditTriggers(QTableWidget.NoEditTriggers)
         #signal liste image cliquer
-        self.table_widget_file_name.cellDoubleClicked.connect(self.onCellTableWidgetClicked)
+        self.table_widget_file_name.cellDoubleClicked.connect(self.onCellDoubleClickedTableFileName)
         
         #masquer le menu administration
         if user.roles.type == "user":
@@ -109,41 +130,58 @@ class MasqueWindow(QMainWindow):
         self.action_gestion_roles.triggered.connect(self.onOpenDialogRoles)
         self.action_gestion_utilisateur.triggered.connect(self.onOpenDialogUser)
         self.action_gestion_champs.triggered.connect(self.onOpenDialogChamps)
-        self.action_gestion_type_champs.triggered.connect(self.onOpenDialogTypeChamps)
         self.action_intervertir_les_champs.triggered.connect(self.onOpenDialogIntervertirChamps)
 
         self.action_exporter.triggered.connect(self.onOpenDialogExportation)
 
         self.showMaximized()
 
-        # self.stacked_widget_champs.setFocus()
 
     def onOpenDialogChargement(self):
         self.dialog_widget_chargement = DialogChargement()
-        self.dialog_widget_chargement.handleAnneePathImage.connect(self.onHandleAnneePathImage)
+        self.dialog_widget_chargement.handleAnneePathImage.connect(self.onLoadImagesAndFieldsInStackWidget)
         self.dialog_widget_chargement.exec_()
     
-    #chargement des images dans le stack_widget_champs
-    def onHandleAnneePathImage(self, annee, path_image, cdc_select):
-        
-        self.annee_registre = annee
-        self.cdc_selected = cdc_select
-        
+    #chargement des champs et image et mise a jour table widget production dans le stack_widget_images
+    def onLoadImagesAndFieldsInStackWidget(self, numero_registre: str, path_image: str, Famille_selected: object, is_1_file_many_acte: bool):
+
+        self.famille_selected = Famille_selected
+        self.is_1_file_many_acte = is_1_file_many_acte
+
+        self.champs = Champs.select().where(Champs.famille == Famille_selected).order_by(Champs.position)
+        familles = Famille.select().where(Famille.cdc == Famille_selected.cdc)
+    
+        nom_cdc_current = Famille_selected.cdc.nom_cdc
+        self.preLoadData(nom_cdc_current, familles, numero_registre)
+    
         self.appendChampsInstackChamps()
         self.appendImageInStackImage(path_image)
-    
-    
-    def onGetChampsSelectedByRegistre(self, registre, champs):
-        self.registre_selected = registre
-        self.champs_selected = champs
-        """ à chaque changement de type de registre valider, on enleve tous les champs dans le stack,
-            puis on reinitisalise de tous le debut
         """
-        if self.registre_selected != registre and self.registre_selected is not None:
-            self.clearStackWidgetChamps()
-            # self.initRegistreByCdc()
-        """ et après, si après on ajoute le nouveau champs"""
-        self.appendChampsInstackChamps()
+        charger les 10 derniers lignes
+        et modification du progressbar
+        """
+        self.updateTableWidgetProduction()
+        self.setValueProgressBar()
+
+    def preLoadData(self, nom_cdc_current:str, familles:list, numero_registre: str):
+
+        # familles = Famille.select().where(Famille.cdc == Famille_selected.cdc)
+        # nom_cdc_current = Famille_selected.cdc.nom_cdc
+        match nom_cdc_current:
+            case 'LOG':
+                """
+                    POUR LE CDC LOG
+                """
+                self.data['numero_registre'] = numero_registre
+                self.data['famille'] = self.famille_selected
+                for famille in familles:
+                    nom_famille = famille.nom_famille
+                        # self.data["code_etat"] = 0
+                    if re.search(r"NAISSANC|RECONNAISSANC", nom_famille):
+                        if re.search(r"NAISSAN", nom_famille):
+                            self.data['code_commune'] = 'A0'
+                        self.data["code_famille_acte"] = 'N'
+                        self.data["code_etat"] = 0
 
     def clearStackWidgetChamps(self):
         """
@@ -161,188 +199,227 @@ class MasqueWindow(QMainWindow):
         Ajoute les champs de saisie dans le stack widget.
         Crée et configure les conteneurs de champs avec leurs signaux.
         """
-        type_registre = self.stacked_widget_champs.findChild(QLineEdit, 'type_registre')
-        
-        if type_registre is None:
-            # Premier champ - création du conteneur initial
-            container_line_edit = ContainerLineEdit(self.cdc_selected)
+        for champs in self.champs:
+            self.list_champs.append(champs.name_champs)
+            container_line_edit = ContainerLineEdit(self.famille_selected, champs, self.numero_acte)
             self._connectContainerSignals(container_line_edit)
-            container_line_edit.childrenFindRegistreAndChamps.connect(self.onGetChampsSelectedByRegistre)
             self.stacked_widget_champs.addWidget(container_line_edit)
             container_line_edit.setFocus()
-        else:
-            # Ajout des champs supplémentaires
-            for champs in self.champs_selected:
-                self.list_champs.append(champs.name_champs)
-                container_line_edit = ContainerLineEdit(self.cdc_selected, champs)
-                self._connectContainerSignals(container_line_edit)
-                self.stacked_widget_champs.addWidget(container_line_edit)
 
         """singleton"""
         self.app_state.count_stack = self.stacked_widget_champs.count()
         
-    def moveScrollBar(self, arrow_pressed, step):
+    def moveScrollBar(self, arrow_pressed):
         graphic_view = self.stacked_widget_images.currentWidget()
         
         if isinstance(graphic_view, QGraphicsView):
             match arrow_pressed:
                 case 'up':
-                    graphic_view.verticalScrollBar().setValue(graphic_view.verticalScrollBar().value() - SCROLL_STEP)
+                    graphic_view.verticalScrollBar().setValue(graphic_view.verticalScrollBar().value() - MasqueWindow.SCROLL_STEP)
                 case 'down':
-                    graphic_view.verticalScrollBar().setValue(graphic_view.verticalScrollBar().value() + SCROLL_STEP)
+                    graphic_view.verticalScrollBar().setValue(graphic_view.verticalScrollBar().value() + MasqueWindow.SCROLL_STEP)
                 case 'left':
-                    graphic_view.horizontalScrollBar().setValue(graphic_view.horizontalScrollBar().value() - SCROLL_STEP)
+                    graphic_view.horizontalScrollBar().setValue(graphic_view.horizontalScrollBar().value() - MasqueWindow.SCROLL_STEP)
                 case 'right':
-                    graphic_view.horizontalScrollBar().setValue(graphic_view.horizontalScrollBar().value() + SCROLL_STEP)
-
-    def checkDateOrTime(self, name_widget, date_or_time):
-        # is_valid = True
-        message = {
-            "is_valid": True,
-            "message": None
-        }
-        if 'date' in name_widget:
-            if not DateTimeManager.isDateValid(date_or_time):
-                # QMessageBox.critical(self, "Erreur", "La date est invalid")
-                message["is_valid"] = False
-                message["message"] = "La date est invalid"
-                
-                return message
-            
-            annee = date_or_time[-4:]
-            if annee != self.annee_registre:
-                # QMessageBox.critical(self, "Erreur", "La date de registre est differente de la date d'évènement")
-                message["is_valid"] = False
-                message["message"] = "Année de registre est differente de l'année d'évènement" if not 'date_dre' in name_widget else "Année de registre est différente de l'année du dressé"
-        if 'heure' in name_widget:
-            if not DateTimeManager.isTimeValid(date_or_time):
-                message["is_valid"] = False
-                message["message"] = "Heure est invalid"
-        return message
+                    graphic_view.horizontalScrollBar().setValue(graphic_view.horizontalScrollBar().value() + MasqueWindow.SCROLL_STEP)
     
-    def onPreviousFieldInStack(self, previous_position):
-        if previous_position < 0:
-            self.app_state.current_position_line_edit = 0
+    def onPreviousFieldInStack(self):
+        if self.current_index_field == 0:
             QMessageBox.information(self, "Information", "Il n'y a plus de champs")
             return
-        self.stacked_widget_champs.setCurrentIndex(previous_position)
+        
+        self.current_index_field -= 1
+        self.stacked_widget_champs.setCurrentIndex(self.current_index_field)
 
-    def onNextFieldInStack(self, current_position_line_edit):
+    def onNextFieldInStack(self):
         """
         Gère le passage au champ suivant.
-        Sauvegarde les données si tous les champs sont remplis.
-        
-        Args:
-            current_position_line_edit: Position actuelle dans le stack
+        Sauvegarde les données si tous les champs sont valides.
         """
-        data = [ 
-            self.cdc_selected, 
-            self.registre_selected, 
-            self.user,
-            datetime.now(),
-            self.annee_registre
-        ]
         line_edit = self.stacked_widget_champs.currentWidget().findChild(QLineEdit)
         if line_edit:
-            name = line_edit.objectName()
+            name_widget = line_edit.objectName()
             content = line_edit.text()
-            if name == 'numero_acte':
-                self.app_state.numero_acte = int(content)
-            if 'nom' in name:
-                content = content.upper()
-            if 'prenom' in name:
-                content = content.title()
-            # line_edit.setText(content)
-
-            #verification date et heure
-            info = self.checkDateOrTime(name, content)
-            if not info['is_valid']:
-                if "Année de registre" in info['message']:
-                    reply = QMessageBox.question(self, 'Question', f"{info['message']}\nvoulez-vous continuer?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-                    if reply == QMessageBox.No:
-                        return
-                else:
-                    QMessageBox.critical(self, "Erreur", info['message'])
-                    return
-            champ = None
-            for name_champ in self.list_champs:
-                if name_champ == name:
-                    champ = Champs.select().where((Champs.registre == self.registre_selected) & (Champs.name_champs == name_champ)).get()
-                
-
-            data.append(content)
-            data.append(self.app_state.numero_acte)
-            data.append(champ)
             
-            current_index_image = self.stacked_widget_images.currentIndex()
-            data.append(self.list_images[current_index_image])
+            validator = Validator.validate(line_edit, self.champs, self.famille_selected, self.data)
+            is_valid, message, content, type = validator.get('is_valid'), validator.get('message'), validator.get('value'), validator.get('type')
 
-        self.data.append(tuple(data))    
-
-        self.app_state.current_position_line_edit = current_position_line_edit + 1
-        self.stacked_widget_champs.setCurrentIndex(self.app_state.current_position_line_edit) # passer au champ suivant
-
-        if self.app_state.current_position_line_edit == self.stacked_widget_champs.count():
-            #Question sur l'enregistrement dans la base
-            reply = QMessageBox.question(
-                self,
-                "Question",
-                "Voulez-vous enregistrer ?",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.Yes
-            )
-
-            if reply == QMessageBox.Yes:
-                Production.insert_many(
-                    self.data, 
-                    fields=[
-                        Production.cdc, 
-                        Production.registre, 
-                        Production.user, 
-                        Production.date_traitement,
-                        Production.annee_registre,
-                        Production.valeur_champ, 
-                        Production.numero_acte,
-                        Production.champs,
-                        Production.nom_image,
-                        
-                ]).execute()
+            if not is_valid:
+                match type:
+                    case 'critical':
+                        MessageBox.show(type, message)
+                        return
+                    case 'question':
+                        reply = MessageBox.show(type, message)
+                        if reply == QMessageBox.No:
+                            return
+                    case 'castNumeroActeOk':
+                        """
+                        donc pas de string comme bis
+                        """
+                        self.numero_acte = content + 1
+                    case 'castNumeroActeFailed':
+                        self.numero_acte += 1
+            
+            """
+            passage au champs suivant
+            """
+            self.current_index_field += 1
+            self.stacked_widget_champs.setCurrentIndex(self.current_index_field)
+            """
+            mettre à jour le donnée à sauvegarder
+            """
+            self.data[name_widget] = content     
+            """
+            A la fin des champs,
+            on fait une traitement
+            """
+            if self.current_index_field >= len(self.champs):
+                reply = MessageBox.show('question', "Voulez vous enregistrer?")
+                """
+                sauvegarde ou modification des données
+                """
+                if reply == QMessageBox.Ok:
+                    self.data['date_traitement'] = datetime.now()
+                    self.data['heure_traitement'] = datetime.now().time()
+                    self.data['nom_fichier'] = self.list_images[self.current_index_image]
+                    """
+                    informe l'utilisateur s'il veut mettre à jour l'acte
+                    """
+                    if self.acteExist(self.data["numero_acte"], self.data["numero_registre"]):
+                        reply = MessageBox.show('question', f"L'acte N°{self.data['numero_acte']} existe déjà.\n Voulez-vous le modifier?")
+                        if reply == QMessageBox.Ok:
+                            acte = self.getOneActe(self.data['numero_acte'], self.data['numero_registre'])
+                            self.updateData(acte.id)
+                    else:
+                        """
+                        sauvegarde
+                        """
+                        self.saveData()
+                        self.setValueProgressBar()
+                        self.updateTableWidgetProduction()
                 
-                self.app_state.numero_acte += 1 # incrementation du numéro d'acte
-                self.data = list()#reinitialisation la list
+                    reply = MessageBox.show('question', "Voulez vous passer au image suivant?")
+                    if reply == QMessageBox.Ok:
+                        self.nextImage()
+                        self.setCurrentFileNameWidget()
 
-                reply = QMessageBox.question(
-                    self,
-                    "Question",
-                    "Voulez-vous passer au image suivant?",
-                    QMessageBox.Yes | QMessageBox.No,
-                    QMessageBox.Yes
-                )
-                
-                #chargement de l'image suivant
-                if reply == QMessageBox.Yes:
-                    if self.current_index_image < len(self.list_images):
-                        self.current_index_image = self.current_index_image + 1
+                    elif reply == QMessageBox.No:
+                        return
+                    """
+                    reinitialisation:
+                        partiel du donnée
+                        la vue stack widget champs
+                        index du champs
+                    """
+                    self.initPartialData()
+                    self.clearStackWidgetChamps()
+                    self.appendChampsInstackChamps()
+                    self.current_index_field = 0
 
-                        self.clearStackWidgetChamps()
-                        self.appendChampsInstackChamps()
-                        self.nextOrPreviousImage() #image suivant
-                        self.table_widget_file_name.changeCurrentItem(self.current_index_image) #mettre en subrillance l'item suivant
+                else:
+                    self.current_index_field -= 1
 
-                self.app_state.count_stack = 0
-                self.app_state.current_position_line_edit = 0
-                    
+    def initPartialData(self)->None:
+        match self.famille_selected.cdc.nom_cdc:
+            case 'LOG':
+                """
+                POUR LA COMPARAISON D'acte suivant
+                a chaque nouvelle d'acte, on doit reinitiliser ces données
+                """
+                self.data['date_dresse'] = None
+                self.data['date_evenement'] = None
+                self.data['nom_pere'] = None
+                self.data['nom_principal'] = None
+            
+    def saveData(self):
+        match self.famille_selected.cdc.nom_cdc:
+            case 'LOG':
+                if re.search(r'NAISSAN', self.famille_selected.nom_famille):
+                    NaissanceRepository.saveData(self.data)
 
-                # elif reply == QMessageBox.No:
-                #     return
-                    # self.clearStackWidgetChamps()
-                    # self.initRegistreByCdc()
-                    # self.nextOrPreviousImage() #image suivant
-                    # self.app_state.current_position_line_edit = 0
-                    # self.app_state.count_stack = 0
+    def updateData(self, id: int):
+        match self.famille_selected.cdc.nom_cdc:
+            case 'LOG':
+                if re.search(r'NAISSAN', self.famille_selected.nom_famille):
+                    NaissanceRepository.updateActe(self.data, id)
 
-                # if reply == QMessageBox.No:
-                #     return
+    def acteExist(self, numero_acte: int, numero_registre: int)->bool:
+        exist = False
+        match self.famille_selected.cdc.nom_cdc:
+            case 'LOG':
+                if re.search(r'NAISSAN', self.famille_selected.nom_famille):
+                   exist =  NaissanceRepository.acteExist(self.famille_selected, numero_acte, numero_registre)
+
+        return exist
+    
+    def getOneActe(self, numero_acte: str, numero_registre: int)-> any:
+        acte = None
+        match self.famille_selected.cdc.nom_cdc:
+            case 'LOG':
+                if re.search(r'NAISSAN', self.famille_selected.nom_famille):
+                   acte =  NaissanceRepository.getOneActe(self.famille_selected, numero_acte, numero_registre)
+        return acte
+
+    def getCountRowActe(self)->int:
+        count = None
+        match self.famille_selected.cdc.nom_cdc:
+            case 'LOG':
+                if re.search(r'NAISSAN', self.famille_selected.nom_famille):
+                   """
+                   calculer la progression actuel
+                   1fichier->4ligne
+                             ?ligne
+                   """
+                   count_row = NaissanceRepository.count(self.famille_selected, self.data['numero_registre'])
+                   count =  math.floor(count_row / 4) if self.is_1_file_many_acte else count_row
+        return count
+    
+    def updateTableWidgetProduction(self):
+        actes = list()
+        match self.famille_selected.cdc.nom_cdc:
+            case 'LOG':
+                if re.search(r'^NAISSAN|^RECONNAIS', self.famille_selected.nom_famille):
+                   actes = NaissanceRepository.getLastActes(self.famille_selected, self.data["numero_registre"])
+                   self.table_widget_production.setRowCount(len(actes))
+                   self.table_widget_production.setColumnCount(6)
+                   self.table_widget_production.setHorizontalHeaderLabels(["Image", "Année de registre", "Numéro d'acte", "Nom principal", "Prénom principal", "Code commune"])
+        for row, acte in enumerate(actes):
+            if self.famille_selected.cdc.nom_cdc == "LOG" and re.search(r'NAISSAN|^RECONNAIS', self.famille_selected.nom_famille):
+                infos = [acte.nom_fichier, acte.numero_registre, acte.numero_acte, acte.nom_principal, acte.prenom_principal, acte.code_commune]
+                for col, info in enumerate(infos):
+                    self.table_widget_production.setItem(row, col, QTableWidgetItem(info))
+
+    """
+    etat du progression des actes traités
+    """
+    def setValueProgressBar(self):
+        self.progress_bar.setValue(round(self.getCountRowActe() * 100 / (len(self.list_images))))
+
+    def nextImage(self):
+        if self.current_index_image == self.stacked_widget_images.count() - 1:
+            QMessageBox.information(None, "Erreur", "Il n'y a plus d'image")
+            # self.deleteLater() # detruire la fenetre
+            return
+        
+        self.current_index_image += 1
+        self.setCurrentImages()
+
+    def previousImage(self):
+        if self.current_index_image == 0:
+            QMessageBox.information(None, "Erreur", "Il n'y a plus d'image")
+            return
+        
+        self.current_index_image -= 1
+        self.setCurrentImages()
+        
+    def setCurrentImages(self):
+        self.stacked_widget_images.setCurrentIndex(self.current_index_image)
+        self.stacked_widget_images.setCurrentWidget(self.stacked_widget_images.widget(self.current_index_image))
+
+
+    def setCurrentFileNameWidget(self):
+        self.table_widget_file_name.changeCurrentItem(self.current_index_image) #mettre en subrillance l'item courant
 
     def appendImageInStackImage(self, path):
         """
@@ -381,77 +458,35 @@ class MasqueWindow(QMainWindow):
         Args:
             event: L'événement clavier reçu
         """
-        key = event.text()
-        modifiers = event.modifiers()
         #image suivant
         if event.key() == Qt.Key_F7:
-            if self.stacked_widget_images.currentIndex() == self.stacked_widget_images.count() - 1:
-                QMessageBox.information(None, "Erreur", "Il n'y a plus d'image")
-                return
-            self.nextOrPreviousImage()
-            self.table_widget_file_name.changeCurrentItem(self.stacked_widget_images.currentIndex())
+            self.nextImage()
+            self.setCurrentFileNameWidget()
         #image précedent
         elif event.key() == Qt.Key_F3:
-            if self.stacked_widget_images.currentIndex() == 0:
-                QMessageBox.information(None, "Erreur", "Il n'y a plus d'image")
-                return
-            else:
-                self.app_state.numero_acte -= 1
-                self.nextOrPreviousImage(False)
-                self.table_widget_file_name.changeCurrentItem(self.stacked_widget_images.currentIndex())
+            self.previousImage()
+            self.setCurrentFileNameWidget()
 
-                production_repository = ProductionRepository()
-                data_previous_acte = production_repository.findDataPreviousActe(self.cdc_selected, self.registre_selected, self.user, self.annee_registre)
-
-                #reinitialiser des widgets
-                self.clearStackWidgetChamps()
-                # self.initRegistreByCdc()
-                # self.appendChampsInstackChamps()
-                self.presetDataPreviousActe(data_previous_acte)
-                self.app_state.count_stack = 0
-                self.app_state.current_position_line_edit = 0
-            
         #zoom images
         if event.modifiers() & Qt.ControlModifier:
             if event.key() == Qt.Key_Plus or event.key() == Qt.Key_Equal:  # "+" peut être aussi "=" sur certains claviers
                 self.zoom()
             elif event.key() == Qt.Key_Minus:
                 self.zoom(False)
-
-    def presetDataPreviousActe(self, productions):
-        for production in productions:
-            pass
-        # for production in productions:
-        #     print(f"valeur => {production.valeur_champ} name_champs=> {production.champs.name_champs}")
-        # for champs in self.champs_selected:
-        #         self.list_champs.append(champs.name_champs)
-        #         container_line_edit = ContainerLineEdit(self.cdc_selected, champs)
-        #         """signal personnalisé"""
-        #         container_line_edit.nextPositionInStack.connect(self.onNextFieldInStack)
-        #         container_line_edit.previousPositionInStack.connect(self.onPreviousFieldInStack) 
-        #         container_line_edit.zoom.connect(self.zoom)
-        #         container_line_edit.scrollDefile.connect(self.moveScrollBar)
-
-        #         self.stacked_widget_champs.addWidget(container_line_edit)
-
-
-    def nextOrPreviousImage(self, is_next_image = True):
-        self.stacked_widget_images.setCurrentIndex(self.stacked_widget_images.currentIndex() + 1 if is_next_image else self.stacked_widget_images.currentIndex() - 1)
-        self.stacked_widget_images.setCurrentWidget(self.stacked_widget_images.widget(self.stacked_widget_images.currentIndex()))
-
-    def selectRowTableWidgetFileName(self):
-        pass
           
-    def zoom(self, is_zoom_plus):
+    def zoom(self, is_zoom_plus = True):
             graphic_viewer = self.stacked_widget_images.currentWidget()
             if is_zoom_plus:
-                graphic_viewer.scale(ZOOM_FACTOR_IN, ZOOM_FACTOR_IN)  # Zoom avant
+                graphic_viewer.scale(MasqueWindow.ZOOM_FACTOR_IN, MasqueWindow.ZOOM_FACTOR_IN)  # Zoom avant
             else:
-                graphic_viewer.scale(ZOOM_FACTOR_OUT, ZOOM_FACTOR_OUT)  # Zoom avant
+                graphic_viewer.scale(MasqueWindow.ZOOM_FACTOR_OUT, MasqueWindow.ZOOM_FACTOR_OUT)  # Zoom avant
 
-    def onCellTableWidgetClicked(self, row, column):
-        self.stacked_widget_images.setCurrentIndex(row)
-        self.stacked_widget_images.setCurrentWidget(self.stacked_widget_images.widget(row))
+    def onCellDoubleClickedTableFileName(self, row, column):
+        self.current_index_image = row
+        self.setCurrentFileNameWidget()
+        self.setCurrentImages()
+        # self.stacked_widget_images.setCurrentIndex(self.current_index_image)
+        # self.stacked_widget_images.setCurrentWidget(self.stacked_widget_images.widget(self.current_index_image))
 
     def onOpenDialogRoles(self):
         dialog_widget_roles = DialogRoles()
@@ -460,15 +495,14 @@ class MasqueWindow(QMainWindow):
     def onOpenDialogUser(self):
         dialog_widget_user = DialogUser()
         dialog_widget_user.exec_()
-        pass
-        # pass
+        
     def onOpenDialogChamps(self):
-        dialog_widget_champs = DialogCdcRegistre()
+        dialog_widget_champs = DialogCdcFamille()
         dialog_widget_champs.exec_()
 
-    def onOpenDialogTypeChamps(self):
-        dialog_widget_type_champs = DialogTypeChamps()
-        dialog_widget_type_champs.exec_()
+    # def onOpenDialogTypeChamps(self):
+    #     dialog_widget_type_champs = DialogTypeChamps()
+    #     dialog_widget_type_champs.exec_()
 
     def onOpenDialogIntervertirChamps(self):
         dialog_widget_intervertir_champs = DialogIntervertirChamps()
@@ -489,14 +523,3 @@ class MasqueWindow(QMainWindow):
         container.previousPositionInStack.connect(self.onPreviousFieldInStack)
         container.zoom.connect(self.zoom)
         container.scrollDefile.connect(self.moveScrollBar)
-
-
-        
-
-# if __name__ == "__main__":
-    
-# app = QApplication(sys.argv)
-# window = MasqueWindow()
-# window.show()
-
-# sys.exit(app.exec_())

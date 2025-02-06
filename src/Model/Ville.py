@@ -3,9 +3,7 @@ from src.Model.PeeweeSqliteDB import db
 
 
 class Ville(Model):
-    ville = CharField(null=True)
-    code_commune = CharField(null=True)
-    region = CharField(null=True)
+    commune = CharField(null=True)
     departement = CharField(null=True)
 
     class Meta:

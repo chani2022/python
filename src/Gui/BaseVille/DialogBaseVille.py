@@ -13,16 +13,19 @@ class DialogBaseVille(QDialog):
 
         loadUi('src/Gui/BaseVille/baseVille.ui', self)
 
-        villes = Ville.select().where(Ville.ville ** f"%{keyword}%") # Opérateur `ILIKE` natif insensible à la case
+        villes = Ville.select().where(Ville.commune ** f"%{keyword}%") # Opérateur `ILIKE` natif insensible à la case
         self.table_widget_ville.setRowCount(len(villes))
-        self.table_widget_ville.setColumnCount(4)
-        self.table_widget_ville.setHorizontalHeaderLabels(["Ville", "Département", "Région", "Code commune"])
+        self.table_widget_ville.setColumnCount(2)
+        self.table_widget_ville.setHorizontalHeaderLabels(["Commune", "Département"])
 
         self.resize(750, 300)
 
         for i, ville in enumerate(villes):
-            infos = [ville.ville, ville.departement, ville.region, ville.code_commune]
+            infos = [ville.commune, ville.departement]
             for j, info in enumerate(infos):
+                """
+                empecher d'afficher None dans la vue
+                """
                 if info is None:
                     info = ""
                 self.table_widget_ville.setItem(i, j, QTableWidgetItem(str(info)))
@@ -33,7 +36,7 @@ class DialogBaseVille(QDialog):
         # Vérifie si la touche pressée est "Return" ou "Enter"
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):
             current_row = self.table_widget_ville.item(self.table_widget_ville.currentRow(),0)
-            #si aucun choix n'est proposé, on ferme la dialog et on arrete la
+            #si aucun choix n'est proposé, on ferme la dialog
             if current_row is None:
                 self.accept()
                 return

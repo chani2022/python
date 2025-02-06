@@ -107,7 +107,6 @@
     <addaction name="action_gestion_roles"/>
     <addaction name="action_gestion_utilisateur"/>
     <addaction name="action_gestion_champs"/>
-    <addaction name="action_gestion_type_champs"/>
    </widget>
    <widget class="QMenu" name="menuDisposition">
     <property name="title">
