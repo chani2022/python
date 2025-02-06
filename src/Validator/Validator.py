@@ -1,4 +1,3 @@
-# from src.Singleton.AppState import AppState
 from src.Date.DateTimeManager import DateTimeManager
 from src.Repository.PrenomRepository import PrenomRepository
 import re

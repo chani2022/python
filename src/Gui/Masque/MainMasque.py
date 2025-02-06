@@ -25,7 +25,6 @@ from src.Model.TypeActe import TypeActe
 from src.Model.Champs import Champs
 from src.Model.Famille import Famille
 
-from src.Singleton.AppState import AppState
 from datetime import datetime
 from src.Date.DateTimeManager import DateTimeManager
 from src.Repository.NaissanceRepository import NaissanceRepository
@@ -72,8 +71,6 @@ class MasqueWindow(QMainWindow):
         self.champs = list()
         
         screen = QApplication.primaryScreen()
-
-        self.app_state = AppState()
 
         self.list_images = list()
         self.images_path = "images"
