@@ -2,7 +2,6 @@ import re
 from PyQt5.QtWidgets import QLineEdit, QMessageBox
 from PyQt5.QtCore import Qt, QEvent, pyqtSignal
 from src.Gui.Masque.DialogTableWidgetTypeActe import DialogTableWidgetTypeActe
-from src.Singleton.AppState import AppState
 from src.Gui.BaseVille.DialogBaseVille import DialogBaseVille
 from src.Repository.PrenomRepository import PrenomRepository
 from src.Gui.MessageBox.MessageBox import MessageBox
@@ -20,7 +19,6 @@ class LineEdit(QLineEdit):
         self.champs = champs
         self.numero_acte = numero_acte
         self.famille = famille
-        self.app_state = AppState() #instance global singleton
 
         self.setStyleSheet(
             """

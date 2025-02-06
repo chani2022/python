@@ -25,7 +25,6 @@ from src.Model.TypeActe import TypeActe
 from src.Model.Champs import Champs
 from src.Model.Famille import Famille
 
-from src.Singleton.AppState import AppState
 from datetime import datetime
 from src.Date.DateTimeManager import DateTimeManager
 from src.Repository.NaissanceRepository import NaissanceRepository
@@ -72,8 +71,6 @@ class MasqueWindow(QMainWindow):
         self.champs = list()
         
         screen = QApplication.primaryScreen()
-
-        self.app_state = AppState()
 
         self.list_images = list()
         self.images_path = "images"
@@ -206,8 +203,6 @@ class MasqueWindow(QMainWindow):
             self.stacked_widget_champs.addWidget(container_line_edit)
             container_line_edit.setFocus()
 
-        """singleton"""
-        self.app_state.count_stack = self.stacked_widget_champs.count()
         
     def moveScrollBar(self, arrow_pressed):
         graphic_view = self.stacked_widget_images.currentWidget()
@@ -479,14 +474,12 @@ class MasqueWindow(QMainWindow):
             if is_zoom_plus:
                 graphic_viewer.scale(MasqueWindow.ZOOM_FACTOR_IN, MasqueWindow.ZOOM_FACTOR_IN)  # Zoom avant
             else:
-                graphic_viewer.scale(MasqueWindow.ZOOM_FACTOR_OUT, MasqueWindow.ZOOM_FACTOR_OUT)  # Zoom avant
+                graphic_viewer.scale(MasqueWindow.ZOOM_FACTOR_OUT, MasqueWindow.ZOOM_FACTOR_OUT)  # Zoom arriere
 
     def onCellDoubleClickedTableFileName(self, row, column):
         self.current_index_image = row
         self.setCurrentFileNameWidget()
         self.setCurrentImages()
-        # self.stacked_widget_images.setCurrentIndex(self.current_index_image)
-        # self.stacked_widget_images.setCurrentWidget(self.stacked_widget_images.widget(self.current_index_image))
 
     def onOpenDialogRoles(self):
         dialog_widget_roles = DialogRoles()
@@ -499,10 +492,6 @@ class MasqueWindow(QMainWindow):
     def onOpenDialogChamps(self):
         dialog_widget_champs = DialogCdcFamille()
         dialog_widget_champs.exec_()
-
-    # def onOpenDialogTypeChamps(self):
-    #     dialog_widget_type_champs = DialogTypeChamps()
-    #     dialog_widget_type_champs.exec_()
 
     def onOpenDialogIntervertirChamps(self):
         dialog_widget_intervertir_champs = DialogIntervertirChamps()

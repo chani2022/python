@@ -1,4 +1,3 @@
-# from src.Singleton.AppState import AppState
 from src.Date.DateTimeManager import DateTimeManager
 from src.Repository.PrenomRepository import PrenomRepository
 import re
@@ -7,8 +6,6 @@ class Validator:
         
     @classmethod
     def validate(self, line_edit_widget, champs, Famille, data):
-
-        # self.app_state = AppState()
 
         name_widget_current = line_edit_widget.objectName()
         value = line_edit_widget.text()
@@ -118,7 +115,9 @@ class Validator:
                                 except ValueError:
                                     info["value"] = info["value"]
                                     info["type"] = "castNumeroActeFailed"
-
+                        """
+                        date check
+                        """
                         if re.search(r'^date', name_widget_current):
                             if re.search(r'even|dres|naissa',name_widget_current):
                                 """
@@ -143,8 +142,8 @@ class Validator:
                                         """
                                             A PARTIR D'ICI, INFO['value'] EST UNE DATETIME
                                         """
+                                        numero_registre = data["numero_registre"][0:4]#extraire l'année s'il y a bis
                                         if re.search(r'even|dress', name_widget_current):
-                                            numero_registre = data["numero_registre"][0:4]#extraire l'année s'il y a bis
                                             """
                                             on informe l'utilisateur
                                             si l'année de registre est different de annee de dresse ou evenement
@@ -181,6 +180,17 @@ class Validator:
                                                 info["is_valid"] = False
                                                 info["message"] = f"la date de dresse < date d'évènement \n Voulez-vous continuer?"
                                                 info["type"] = "question"
+                                        else:
+                                            """
+                                            check si le numero de registre est le même que l'année de naissance
+                                            SEULE LE PRINCIPAL EST CONCERNE
+                                            """
+                                            if re.search(r'princip', name_widget_current):
+                                                if int(numero_registre) != info['value'].year:
+                                                    info["is_valid"] = False
+                                                    info["message"] = f"La {label} est different de l'année de registre\n Voulez-vous continuer?"
+                                                    info["type"] = "question"
+
                                     
                         if re.search(r'heure', name_widget_current):
                             """

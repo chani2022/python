@@ -2,9 +2,7 @@ from PyQt5.QtWidgets import QWidget, QDialog, QTableWidgetItem
 from PyQt5.uic import loadUi
 from src.Model.Cdc import Cdc
 from src.Model.TypeActe import TypeActe
-# from src.Model.Production import Production
 from src.Model.Champs import Champs
-from src.Repository.ProductionRepository import ProductionRepository
 from peewee import JOIN
 from src.Excel.Excel import Excel
 
